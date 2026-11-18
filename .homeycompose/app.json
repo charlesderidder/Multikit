@@ -1,6 +1,6 @@
 {
   "id": "dev.charlesderidder.homeyhttpapi",
-  "version": "1.8.0",
+  "version": "1.8.2",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "platforms": [
@@ -74,8 +74,8 @@
     }
   },
   "bugs": {
-    "url": "https://github.com/charlesderidder/homeylocalapi/issues"
+    "url": "https://github.com/charlesderidder/Multikit/issues"
   },
   "homeyCommunityTopicId": 70840,
-  "source": "https://github.com/charlesderidder/homeylocalapi"
+  "source": "https://github.com/charlesderidder/Multikit"
 }
