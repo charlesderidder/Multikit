@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Start or reset timer",
+    "de": "Timer starten oder zurücksetzen",
+    "nl": "Start of reset timer"
+  },
+  "titleFormatted": {
+    "en": "Start timer [[timer]] using its configured duration if it is not running, or reset it to that duration if it is running",
+    "de": "Timer [[timer]] mit der eingestellten Dauer starten, wenn er nicht läuft, oder auf diese Dauer zurücksetzen, wenn er läuft",
+    "nl": "Start timer [[timer]] met de ingestelde duur als deze niet loopt, of reset deze naar de ingestelde duur als deze wel loopt"
+  },
+  "args": [
+    {
+      "type": "autocomplete",
+      "name": "timer",
+      "title": {
+        "en": "Timer",
+        "de": "Timer",
+        "nl": "Timer"
+      }
+    }
+  ]
+}

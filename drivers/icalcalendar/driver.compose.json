@@ -18,8 +18,8 @@
     }
   },
   "images": {
-    "small": "/assets/images/small.png",
-    "large": "/assets/images/large.png",
-    "xlarge": "/assets/images/xlarge.png"
+    "small": "/assets/images/ical-small.png",
+    "large": "/assets/images/ical-large.png",
+    "xlarge": "/assets/images/ical-xlarge.png"
   }
 }

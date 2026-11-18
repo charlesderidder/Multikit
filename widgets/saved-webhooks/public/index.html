@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Saved webhook</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 12px; }
+    header { display: flex; align-items: center; gap: 10px; }
+    img { width: 42px; height: 42px; object-fit: cover; border-radius: 12px; }
+    h1, p { margin: 0; }
+    h1 { font-size: 1rem; }
+    #method { margin-top: 14px; color: #777; font-size: .82rem; }
+    button { width: 100%; margin-top: 14px; padding: 12px; border: 0; border-radius: 9px; background: #0052cc; color: #fff; cursor: pointer; font: inherit; font-weight: 650; }
+    button:disabled { cursor: default; opacity: .55; }
+    #status { min-height: 22px; margin-top: 10px; font-size: .85rem; }
+  </style>
+  <script src="/homey.js" data-origin="widget"></script>
+</head>
+<body>
+  <header><img src="./art.png" alt=""><h1 id="title"></h1></header>
+  <p id="method"></p>
+  <button id="run" type="button"></button>
+  <p id="status" role="status" aria-live="polite"></p>
+  <script>
+    function onHomeyReady(Homey) {
+      const text = (key) => Homey.__(`settings.widgets.savedWebhooks.${key}`);
+      const selected = Homey.getSettings().webhook;
+      const id = selected && typeof selected === 'object' ? selected.id : selected;
+      const title = document.getElementById('title');
+      const method = document.getElementById('method');
+      const run = document.getElementById('run');
+      const status = document.getElementById('status');
+      run.textContent = text('run');
+      title.textContent = text('title');
+      const load = async () => {
+        if (!id) {
+          title.textContent = text('notSelected');
+          run.disabled = true;
+          return;
+        }
+        try {
+          const webhook = await Homey.api('GET', `/webhook?id=${encodeURIComponent(id)}`, {});
+          if (!webhook) throw new Error(text('missing'));
+          title.textContent = webhook.name;
+          method.textContent = webhook.method;
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+          run.disabled = true;
+        }
+      };
+      run.addEventListener('click', async () => {
+        run.disabled = true;
+        status.textContent = text('running');
+        try {
+          await Homey.api('POST', '/run', { webhook: selected || id });
+          status.textContent = text('success');
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+        } finally {
+          run.disabled = false;
+        }
+      });
+      load();
+      Homey.ready();
+    }
+  </script>
+</body>
+</html>

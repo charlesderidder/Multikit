@@ -1,0 +1,12 @@
+{
+  "title": { "en": "Send a saved webhook", "de": "Gespeicherten Webhook senden", "nl": "Opgeslagen webhook versturen" },
+  "titleFormatted": { "en": "Send saved webhook [[webhook]]", "de": "Gespeicherten Webhook [[webhook]] senden", "nl": "Verstuur opgeslagen webhook [[webhook]]" },
+  "hint": {
+    "en": "Add and edit webhooks in the browser settings. This action always uses the latest saved configuration.",
+    "de": "Webhooks in den Browser-Einstellungen hinzufügen und bearbeiten. Diese Aktion verwendet immer die zuletzt gespeicherte Konfiguration.",
+    "nl": "Voeg webhooks toe of wijzig ze in de browserinstellingen. Deze actie gebruikt altijd de laatst opgeslagen configuratie."
+  },
+  "args": [
+    { "type": "autocomplete", "name": "webhook", "title": { "en": "Webhook", "de": "Webhook", "nl": "Webhook" } }
+  ]
+}

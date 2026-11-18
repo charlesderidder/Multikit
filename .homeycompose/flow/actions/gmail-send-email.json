@@ -10,18 +10,18 @@
     "nl": "Verstuur een e-mail naar [[to]] met onderwerp [[subject]] en bericht [[body]]"
   },
   "hint": {
-    "en": "Send a plain-text email using the Gmail account configured in app settings.",
-    "de": "Sendet eine Nur-Text-E-Mail über das in den App-Einstellungen konfigurierte Gmail-Konto.",
-    "nl": "Verstuurt een e-mail als platte tekst via het Gmail-account dat is ingesteld bij de app-instellingen."
+    "en": "Send a plain-text email to up to 500 comma-separated recipients. The app allows up to 500 emails per local calendar day.",
+    "de": "Sendet eine Nur-Text-E-Mail an bis zu 500 durch Kommas getrennte Empfänger. Die App erlaubt bis zu 500 E-Mails pro lokalem Kalendertag.",
+    "nl": "Verstuurt een e-mail als platte tekst naar maximaal 500 ontvangers, gescheiden door komma's. De app staat maximaal 500 e-mails per lokale kalenderdag toe."
   },
   "args": [
     {
       "type": "text",
       "name": "to",
       "placeholder": {
-        "en": "Recipient email address",
-        "de": "E-Mail-Adresse des Empfängers",
-        "nl": "E-mailadres van de ontvanger"
+        "en": "Recipient email addresses (comma-separated, max 500)",
+        "de": "E-Mail-Adressen der Empfänger (durch Kommas getrennt, max. 500)",
+        "nl": "E-mailadressen van ontvangers (gescheiden door komma's, max. 500)"
       }
     },
     {

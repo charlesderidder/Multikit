@@ -1,0 +1,11 @@
+{
+  "name": { "en": "Virtual device", "nl": "Virtueel apparaat", "de": "Virtuelles Gerät" },
+  "class": "other",
+  "capabilities": [],
+  "images": {
+    "small": "/assets/images/virtual-small.png",
+    "large": "/assets/images/virtual-large.png",
+    "xlarge": "/assets/images/virtual-xlarge.png"
+  },
+  "pair": [{ "id": "configure" }]
+}

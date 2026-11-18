@@ -1,13 +1,13 @@
 {
   "title": {
-    "en": "Start or reset a countdown timer",
-    "de": "Einen Countdown starten oder zurücksetzen",
-    "nl": "Start of reset een afteltimer"
+    "en": "Reset timer",
+    "de": "Timer zurücksetzen",
+    "nl": "Reset timer"
   },
   "titleFormatted": {
-    "en": "Start or reset timer [[timer]] using its configured duration",
-    "de": "Timer [[timer]] mit der eingestellten Dauer starten oder zurücksetzen",
-    "nl": "Start of reset timer [[timer]] met de ingestelde duur"
+    "en": "Reset timer [[timer]] to [[seconds]] seconds",
+    "de": "Timer [[timer]] auf [[seconds]] Sekunden zurücksetzen",
+    "nl": "Reset timer [[timer]] naar [[seconds]] seconden"
   },
   "args": [
     {
@@ -17,6 +17,15 @@
         "en": "Timer",
         "de": "Timer",
         "nl": "Timer"
+      }
+    },
+    {
+      "type": "number",
+      "name": "seconds",
+      "title": {
+        "en": "Seconds",
+        "de": "Sekunden",
+        "nl": "Seconden"
       }
     }
   ]

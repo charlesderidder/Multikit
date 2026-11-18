@@ -1,27 +1,35 @@
 {
   "_comment": "This file is generated. Please edit .homeycompose/app.json instead.",
   "id": "dev.charlesderidder.homeyhttpapi",
-  "version": "1.6.2",
+  "version": "1.8.0",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "platforms": [
     "local"
   ],
   "name": {
-    "en": "Homey Toolkit",
-    "de": "Homey Toolkit",
-    "nl": "Homey Toolkit"
+    "en": "Multikit",
+    "de": "Multikit",
+    "nl": "Multikit"
   },
   "description": {
-    "en": "A local HTTP API, countdown timers, Gmail email, and iCal calendar events for Homey flows",
-    "de": "Eine lokale HTTP-API, Countdown-Timer, Gmail-E-Mail und iCal-Kalenderereignisse für Homey-Flows",
-    "nl": "Een lokale HTTP-API, afteltimers, Gmail-e-mail en iCal-agenda-afspraken voor Homey-flows"
+    "en": "Bring your automations together with a versatile set of local tools",
+    "de": "Automatisierungen mit vielseitigen lokalen Werkzeugen verbinden",
+    "nl": "Breng je automatiseringen samen met veelzijdige lokale hulpmiddelen"
   },
   "category": [
     "internet"
   ],
   "permissions": [],
   "api": {
+    "getBrowserUsername": {
+      "method": "GET",
+      "path": "/browser-username"
+    },
+    "setBrowserPassword": {
+      "method": "POST",
+      "path": "/browser-password"
+    },
     "testEmail": {
       "method": "POST",
       "path": "/test-email"
@@ -29,6 +37,10 @@
     "syncCalendars": {
       "method": "POST",
       "path": "/sync-calendars"
+    },
+    "setCountdownRemaining": {
+      "method": "POST",
+      "path": "/countdown-remaining"
     }
   },
   "images": {
@@ -662,6 +674,174 @@
       },
       {
         "title": {
+          "en": "A matching iCal event changes",
+          "de": "Ein passendes iCal-Ereignis ändert sich",
+          "nl": "Een passende iCal-afspraak verandert"
+        },
+        "titleFormatted": {
+          "en": "An iCal event [[eventType]] with title containing [[title]] in calendar [[calendar]]",
+          "de": "Ein iCal-Ereignis [[eventType]] mit Titel [[title]] im Kalender [[calendar]]",
+          "nl": "Een iCal-afspraak [[eventType]] met titel [[title]] in agenda [[calendar]]"
+        },
+        "hint": {
+          "en": "Title matching is case-insensitive and searches within the title. Calendar names must match exactly, ignoring case. Use * for any title or calendar.",
+          "de": "Der Titel wird ohne Beachtung der Großschreibung durchsucht. Der Kalendername muss ohne Beachtung der Großschreibung genau übereinstimmen. * steht für beliebige Titel oder Kalender.",
+          "nl": "De titel wordt hoofdletterongevoelig doorzocht. De agendanaam moet exact overeenkomen, zonder onderscheid tussen hoofdletters en kleine letters. Gebruik * voor elke titel of agenda."
+        },
+        "args": [
+          {
+            "type": "dropdown",
+            "name": "eventType",
+            "values": [
+              {
+                "id": "ical-event-started",
+                "label": {
+                  "en": "starts",
+                  "de": "beginnt",
+                  "nl": "begint"
+                }
+              },
+              {
+                "id": "ical-event-ended",
+                "label": {
+                  "en": "ends",
+                  "de": "endet",
+                  "nl": "eindigt"
+                }
+              },
+              {
+                "id": "ical-event-added",
+                "label": {
+                  "en": "is added",
+                  "de": "hinzugefügt wird",
+                  "nl": "wordt toegevoegd"
+                }
+              },
+              {
+                "id": "ical-event-changed",
+                "label": {
+                  "en": "is changed",
+                  "de": "geändert wird",
+                  "nl": "wordt gewijzigd"
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "name": "title",
+            "placeholder": {
+              "en": "Title contains, or *",
+              "de": "Titel enthält, oder *",
+              "nl": "Titel bevat, of *"
+            }
+          },
+          {
+            "type": "text",
+            "name": "calendar",
+            "placeholder": {
+              "en": "Calendar name, or *",
+              "de": "Kalendername, oder *",
+              "nl": "Agendanaam, of *"
+            }
+          }
+        ],
+        "tokens": [
+          {
+            "name": "title",
+            "type": "string",
+            "title": {
+              "en": "Title",
+              "de": "Titel",
+              "nl": "Titel"
+            }
+          },
+          {
+            "name": "description",
+            "type": "string",
+            "title": {
+              "en": "Description",
+              "de": "Beschreibung",
+              "nl": "Beschrijving"
+            }
+          },
+          {
+            "name": "location",
+            "type": "string",
+            "title": {
+              "en": "Location",
+              "de": "Ort",
+              "nl": "Locatie"
+            }
+          },
+          {
+            "name": "calendar",
+            "type": "string",
+            "title": {
+              "en": "Calendar",
+              "de": "Kalender",
+              "nl": "Agenda"
+            }
+          },
+          {
+            "name": "start",
+            "type": "string",
+            "title": {
+              "en": "Start",
+              "de": "Beginn",
+              "nl": "Start"
+            }
+          },
+          {
+            "name": "end",
+            "type": "string",
+            "title": {
+              "en": "End",
+              "de": "Ende",
+              "nl": "Einde"
+            }
+          },
+          {
+            "name": "duration",
+            "type": "number",
+            "title": {
+              "en": "Duration (minutes)",
+              "de": "Dauer (Minuten)",
+              "nl": "Duur (minuten)"
+            }
+          },
+          {
+            "name": "url",
+            "type": "string",
+            "title": {
+              "en": "Event URL",
+              "de": "Ereignis-URL",
+              "nl": "Afspraak-URL"
+            }
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "title": {
+              "en": "Status",
+              "de": "Status",
+              "nl": "Status"
+            }
+          },
+          {
+            "name": "uid",
+            "type": "string",
+            "title": {
+              "en": "UID",
+              "de": "UID",
+              "nl": "UID"
+            }
+          }
+        ],
+        "id": "ical-event-filtered"
+      },
+      {
+        "title": {
           "en": "An iCal event starts",
           "de": "Ein iCal-Ereignis beginnt",
           "nl": "Een iCal-afspraak begint"
@@ -790,14 +970,14 @@
       },
       {
         "title": {
-          "en": "An HTTP API request is received",
-          "de": "Eine HTTP-API-Anfrage wird empfangen",
-          "nl": "Er is een HTTP API-verzoek ontvangen"
+          "en": "A Multikit API request is received",
+          "de": "Eine Multikit-API-Anfrage wird empfangen",
+          "nl": "Er is een Multikit API-verzoek ontvangen"
         },
         "titleFormatted": {
-          "en": "A [[method]] request received on url [[url]]",
-          "de": "Eine [[method]]-Anfrage mit der URL [[url]] wurde empfangen",
-          "nl": "Een [[method]]-verzoek ontvangen op url [[url]]"
+          "en": "A [[method]] request received by Multikit on [[url]]",
+          "de": "Eine [[method]]-Anfrage von Multikit auf [[url]] wurde empfangen",
+          "nl": "Een [[method]]-verzoek ontvangen door Multikit op [[url]]"
         },
         "args": [
           {
@@ -902,6 +1082,103 @@
           }
         ],
         "id": "local-api-request-received"
+      },
+      {
+        "title": {
+          "en": "A virtual device control changes",
+          "nl": "Een virtueel apparaat verandert",
+          "de": "Ein virtuelles Gerät ändert sich"
+        },
+        "tokens": [
+          {
+            "name": "device",
+            "type": "string",
+            "title": {
+              "en": "Device",
+              "nl": "Apparaat",
+              "de": "Gerät"
+            }
+          },
+          {
+            "name": "variable",
+            "type": "string",
+            "title": {
+              "en": "Capability",
+              "nl": "Eigenschap",
+              "de": "Eigenschaft"
+            }
+          },
+          {
+            "name": "value",
+            "type": "string",
+            "title": {
+              "en": "Value",
+              "nl": "Waarde",
+              "de": "Wert"
+            }
+          }
+        ],
+        "id": "virtual-device-changed"
+      },
+      {
+        "id": "virtual-device-pressed",
+        "title": {
+          "en": "A control is pressed or changed",
+          "nl": "Een bediening wordt ingedrukt of gewijzigd",
+          "de": "Eine Bedienung wird gedrückt oder geändert"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=virtualdevice"
+          }
+        ]
+      },
+      {
+        "id": "virtual-mode-on",
+        "title": {
+          "en": "Mode is turned on",
+          "nl": "Modus wordt aangezet",
+          "de": "Modus wird eingeschaltet"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=virtualmode"
+          }
+        ]
+      },
+      {
+        "id": "virtual-mode-off",
+        "title": {
+          "en": "Mode is turned off",
+          "nl": "Modus wordt uitgezet",
+          "de": "Modus wird ausgeschaltet"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=virtualmode"
+          }
+        ]
+      },
+      {
+        "id": "virtual-mode-changed",
+        "title": {
+          "en": "Mode changed",
+          "nl": "Modus verandert",
+          "de": "Modus ändert sich"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=virtualmode"
+          }
+        ]
       }
     ],
     "conditions": [
@@ -1137,6 +1414,48 @@
       },
       {
         "title": {
+          "en": "An iCal event ends within",
+          "de": "Ein iCal-Ereignis endet innerhalb von",
+          "nl": "Een iCal-afspraak eindigt binnen"
+        },
+        "titleFormatted": {
+          "en": "An event containing [[title]] in [[calendar]] ends within [[minutes]] minutes",
+          "de": "Ein Ereignis mit [[title]] in [[calendar]] endet innerhalb von [[minutes]] Minuten",
+          "nl": "Een afspraak met [[title]] in [[calendar]] eindigt binnen [[minutes]] minuten"
+        },
+        "args": [
+          {
+            "type": "number",
+            "name": "minutes",
+            "title": {
+              "en": "Minutes",
+              "de": "Minuten",
+              "nl": "Minuten"
+            }
+          },
+          {
+            "type": "text",
+            "name": "title",
+            "placeholder": {
+              "en": "Title contains (optional)",
+              "de": "Titel enthält (optional)",
+              "nl": "Titel bevat (optioneel)"
+            }
+          },
+          {
+            "type": "text",
+            "name": "calendar",
+            "placeholder": {
+              "en": "Calendar name (optional)",
+              "de": "Kalendername (optional)",
+              "nl": "Agendanaam (optioneel)"
+            }
+          }
+        ],
+        "id": "ical-event-ends-within"
+      },
+      {
+        "title": {
           "en": "An iCal event matching the title is ongoing",
           "de": "Ein iCal-Ereignis mit passendem Titel findet statt",
           "nl": "Een iCal-afspraak met deze titel is bezig"
@@ -1262,14 +1581,14 @@
       },
       {
         "title": {
-          "en": "Start or reset a countdown timer",
-          "de": "Einen Countdown starten oder zurücksetzen",
-          "nl": "Start of reset een afteltimer"
+          "en": "Reset timer",
+          "de": "Timer zurücksetzen",
+          "nl": "Reset timer"
         },
         "titleFormatted": {
-          "en": "Start or reset timer [[timer]] using its configured duration",
-          "de": "Timer [[timer]] mit der eingestellten Dauer starten oder zurücksetzen",
-          "nl": "Start of reset timer [[timer]] met de ingestelde duur"
+          "en": "Reset timer [[timer]] to [[seconds]] seconds",
+          "de": "Timer [[timer]] auf [[seconds]] Sekunden zurücksetzen",
+          "nl": "Reset timer [[timer]] naar [[seconds]] seconden"
         },
         "args": [
           {
@@ -1279,6 +1598,15 @@
               "en": "Timer",
               "de": "Timer",
               "nl": "Timer"
+            }
+          },
+          {
+            "type": "number",
+            "name": "seconds",
+            "title": {
+              "en": "Seconds",
+              "de": "Sekunden",
+              "nl": "Seconden"
             }
           }
         ],
@@ -1376,6 +1704,54 @@
       },
       {
         "title": {
+          "en": "Start timer",
+          "de": "Timer starten",
+          "nl": "Start timer"
+        },
+        "titleFormatted": {
+          "en": "Start timer [[timer]] using its configured duration if it is not running",
+          "de": "Timer [[timer]] mit der eingestellten Dauer starten, wenn er nicht läuft",
+          "nl": "Start timer [[timer]] met de ingestelde duur als deze niet loopt"
+        },
+        "args": [
+          {
+            "type": "autocomplete",
+            "name": "timer",
+            "title": {
+              "en": "Timer",
+              "de": "Timer",
+              "nl": "Timer"
+            }
+          }
+        ],
+        "id": "countdown-start-configured"
+      },
+      {
+        "title": {
+          "en": "Start or reset timer",
+          "de": "Timer starten oder zurücksetzen",
+          "nl": "Start of reset timer"
+        },
+        "titleFormatted": {
+          "en": "Start timer [[timer]] using its configured duration if it is not running, or reset it to that duration if it is running",
+          "de": "Timer [[timer]] mit der eingestellten Dauer starten, wenn er nicht läuft, oder auf diese Dauer zurücksetzen, wenn er läuft",
+          "nl": "Start timer [[timer]] met de ingestelde duur als deze niet loopt, of reset deze naar de ingestelde duur als deze wel loopt"
+        },
+        "args": [
+          {
+            "type": "autocomplete",
+            "name": "timer",
+            "title": {
+              "en": "Timer",
+              "de": "Timer",
+              "nl": "Timer"
+            }
+          }
+        ],
+        "id": "countdown-start-or-reset-configured"
+      },
+      {
+        "title": {
           "en": "Start a random countdown timer",
           "de": "Einen zufälligen Countdown starten",
           "nl": "Start een willekeurige afteltimer"
@@ -1469,18 +1845,18 @@
           "nl": "Verstuur een e-mail naar [[to]] met onderwerp [[subject]] en bericht [[body]]"
         },
         "hint": {
-          "en": "Send a plain-text email using the Gmail account configured in app settings.",
-          "de": "Sendet eine Nur-Text-E-Mail über das in den App-Einstellungen konfigurierte Gmail-Konto.",
-          "nl": "Verstuurt een e-mail als platte tekst via het Gmail-account dat is ingesteld bij de app-instellingen."
+          "en": "Send a plain-text email to up to 500 comma-separated recipients. The app allows up to 500 emails per local calendar day.",
+          "de": "Sendet eine Nur-Text-E-Mail an bis zu 500 durch Kommas getrennte Empfänger. Die App erlaubt bis zu 500 E-Mails pro lokalem Kalendertag.",
+          "nl": "Verstuurt een e-mail als platte tekst naar maximaal 500 ontvangers, gescheiden door komma's. De app staat maximaal 500 e-mails per lokale kalenderdag toe."
         },
         "args": [
           {
             "type": "text",
             "name": "to",
             "placeholder": {
-              "en": "Recipient email address",
-              "de": "E-Mail-Adresse des Empfängers",
-              "nl": "E-mailadres van de ontvanger"
+              "en": "Recipient email addresses (comma-separated, max 500)",
+              "de": "E-Mail-Adressen der Empfänger (durch Kommas getrennt, max. 500)",
+              "nl": "E-mailadressen van ontvangers (gescheiden door komma's, max. 500)"
             }
           },
           {
@@ -1661,6 +2037,258 @@
           }
         ],
         "id": "local-api-response-with"
+      },
+      {
+        "title": {
+          "en": "Send a GET webhook",
+          "de": "GET-Webhook senden",
+          "nl": "GET-webhook versturen"
+        },
+        "titleFormatted": {
+          "en": "Send a GET webhook to [[url]]",
+          "de": "GET-Webhook an [[url]] senden",
+          "nl": "Verstuur een GET-webhook naar [[url]]"
+        },
+        "args": [
+          {
+            "type": "text",
+            "name": "url",
+            "placeholder": {
+              "en": "HTTP or HTTPS URL",
+              "de": "HTTP- oder HTTPS-URL",
+              "nl": "HTTP- of HTTPS-URL"
+            }
+          }
+        ],
+        "id": "webhook-get"
+      },
+      {
+        "title": {
+          "en": "Send an HTTP webhook",
+          "de": "HTTP-Webhook senden",
+          "nl": "HTTP-webhook versturen"
+        },
+        "titleFormatted": {
+          "en": "Send [[method]] webhook to [[url]] with headers [[headers]] and body [[body]]",
+          "de": "[[method]]-Webhook an [[url]] mit Headern [[headers]] und Inhalt [[body]] senden",
+          "nl": "Verstuur [[method]]-webhook naar [[url]] met headers [[headers]] en inhoud [[body]]"
+        },
+        "hint": {
+          "en": "Headers must be a JSON object with string values, for example {}. HTTP status outside 200–299 fails the action. Redirects are not followed.",
+          "de": "Header müssen ein JSON-Objekt mit Textwerten sein, zum Beispiel {}. HTTP-Status außerhalb 200–299 lassen die Aktion fehlschlagen. Weiterleitungen werden nicht gefolgt.",
+          "nl": "Headers zijn een JSON-object met tekstwaarden, bijvoorbeeld {}. Een HTTP-status buiten 200–299 laat de actie mislukken. Omleidingen worden niet gevolgd."
+        },
+        "args": [
+          {
+            "type": "dropdown",
+            "name": "method",
+            "values": [
+              {
+                "id": "GET",
+                "label": {
+                  "en": "GET",
+                  "de": "GET",
+                  "nl": "GET"
+                }
+              },
+              {
+                "id": "POST",
+                "label": {
+                  "en": "POST",
+                  "de": "POST",
+                  "nl": "POST"
+                }
+              },
+              {
+                "id": "PUT",
+                "label": {
+                  "en": "PUT",
+                  "de": "PUT",
+                  "nl": "PUT"
+                }
+              },
+              {
+                "id": "PATCH",
+                "label": {
+                  "en": "PATCH",
+                  "de": "PATCH",
+                  "nl": "PATCH"
+                }
+              },
+              {
+                "id": "DELETE",
+                "label": {
+                  "en": "DELETE",
+                  "de": "DELETE",
+                  "nl": "DELETE"
+                }
+              }
+            ]
+          },
+          {
+            "type": "text",
+            "name": "url",
+            "placeholder": {
+              "en": "HTTP or HTTPS URL",
+              "de": "HTTP- oder HTTPS-URL",
+              "nl": "HTTP- of HTTPS-URL"
+            }
+          },
+          {
+            "type": "text",
+            "name": "headers",
+            "placeholder": {
+              "en": "Headers as JSON, e.g. {}",
+              "de": "Header als JSON, z. B. {}",
+              "nl": "Headers als JSON, bijv. {}"
+            }
+          },
+          {
+            "type": "text",
+            "name": "body",
+            "placeholder": {
+              "en": "Request body",
+              "de": "Anfrageinhalt",
+              "nl": "Verzoekinhoud"
+            }
+          }
+        ],
+        "id": "webhook-send"
+      },
+      {
+        "title": {
+          "en": "Send a saved webhook",
+          "de": "Gespeicherten Webhook senden",
+          "nl": "Opgeslagen webhook versturen"
+        },
+        "titleFormatted": {
+          "en": "Send saved webhook [[webhook]]",
+          "de": "Gespeicherten Webhook [[webhook]] senden",
+          "nl": "Verstuur opgeslagen webhook [[webhook]]"
+        },
+        "hint": {
+          "en": "Add and edit webhooks in the browser settings. This action always uses the latest saved configuration.",
+          "de": "Webhooks in den Browser-Einstellungen hinzufügen und bearbeiten. Diese Aktion verwendet immer die zuletzt gespeicherte Konfiguration.",
+          "nl": "Voeg webhooks toe of wijzig ze in de browserinstellingen. Deze actie gebruikt altijd de laatst opgeslagen configuratie."
+        },
+        "args": [
+          {
+            "type": "autocomplete",
+            "name": "webhook",
+            "title": {
+              "en": "Webhook",
+              "de": "Webhook",
+              "nl": "Webhook"
+            }
+          }
+        ],
+        "id": "webhook-send-saved"
+      },
+      {
+        "id": "virtual-device-set-value",
+        "title": {
+          "en": "Set a virtual sensor value",
+          "nl": "Stel een virtuele sensorwaarde in",
+          "de": "Virtuellen Sensorwert setzen"
+        },
+        "titleFormatted": {
+          "en": "Set [[sensor]] to [[value]]",
+          "nl": "Stel [[sensor]] in op [[value]]",
+          "de": "[[sensor]] auf [[value]] setzen"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=virtualdevice"
+          },
+          {
+            "type": "text",
+            "name": "sensor",
+            "title": {
+              "en": "Capability ID",
+              "nl": "Eigenschap-ID",
+              "de": "Eigenschafts-ID"
+            }
+          },
+          {
+            "type": "text",
+            "name": "value",
+            "title": {
+              "en": "Value",
+              "nl": "Waarde",
+              "de": "Wert"
+            }
+          }
+        ]
+      },
+      {
+        "id": "virtual-device-select-value",
+        "title": {
+          "en": "Set a selected virtual sensor",
+          "nl": "Stel een gekozen virtuele sensor in",
+          "de": "Ausgewählten virtuellen Sensor setzen"
+        },
+        "titleFormatted": {
+          "en": "Set [[sensor]] to [[value]]",
+          "nl": "Stel [[sensor]] in op [[value]]",
+          "de": "[[sensor]] auf [[value]] setzen"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=virtualdevice"
+          },
+          {
+            "type": "autocomplete",
+            "name": "sensor",
+            "title": {
+              "en": "Capability",
+              "nl": "Eigenschap",
+              "de": "Eigenschaft"
+            }
+          },
+          {
+            "type": "text",
+            "name": "value",
+            "title": {
+              "en": "Value",
+              "nl": "Waarde",
+              "de": "Wert"
+            }
+          }
+        ]
+      },
+      {
+        "id": "virtual-mode-on-silent",
+        "title": {
+          "en": "Turn mode on without custom triggers",
+          "nl": "Zet modus aan zonder eigen triggers",
+          "de": "Modus ohne eigene Trigger einschalten"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=virtualmode"
+          }
+        ]
+      },
+      {
+        "id": "virtual-mode-off-silent",
+        "title": {
+          "en": "Turn mode off without custom triggers",
+          "nl": "Zet modus uit zonder eigen triggers",
+          "de": "Modus ohne eigene Trigger ausschalten"
+        },
+        "args": [
+          {
+            "type": "device",
+            "name": "device",
+            "filter": "driver_id=virtualmode"
+          }
+        ]
       }
     ]
   },
@@ -1685,14 +2313,108 @@
         }
       },
       "images": {
-        "small": "/assets/images/small.png",
-        "large": "/assets/images/large.png",
-        "xlarge": "/assets/images/xlarge.png"
+        "small": "/assets/images/ical-small.png",
+        "large": "/assets/images/ical-large.png",
+        "xlarge": "/assets/images/ical-xlarge.png"
       },
       "id": "icalcalendar"
+    },
+    {
+      "name": {
+        "en": "Virtual device",
+        "nl": "Virtueel apparaat",
+        "de": "Virtuelles Gerät"
+      },
+      "class": "other",
+      "capabilities": [],
+      "images": {
+        "small": "/assets/images/virtual-small.png",
+        "large": "/assets/images/virtual-large.png",
+        "xlarge": "/assets/images/virtual-xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "configure"
+        }
+      ],
+      "id": "virtualdevice"
+    },
+    {
+      "name": {
+        "en": "Virtual mode",
+        "nl": "Virtuele modus",
+        "de": "Virtueller Modus"
+      },
+      "class": "socket",
+      "capabilities": [
+        "onoff"
+      ],
+      "images": {
+        "small": "/assets/images/mode-small.png",
+        "large": "/assets/images/mode-large.png",
+        "xlarge": "/assets/images/mode-xlarge.png"
+      },
+      "pair": [
+        {
+          "id": "configure"
+        }
+      ],
+      "id": "virtualmode"
     }
   ],
   "widgets": {
+    "active-timers": {
+      "name": {
+        "en": "Active timers",
+        "de": "Aktive Timer",
+        "nl": "Actieve timers"
+      },
+      "height": 320,
+      "settings": [],
+      "api": {
+        "getTimers": {
+          "method": "GET",
+          "path": "/timers"
+        }
+      },
+      "id": "active-timers"
+    },
+    "calendar-stats": {
+      "name": {
+        "en": "Calendar statistics",
+        "de": "Kalenderstatistik",
+        "nl": "Agendastatistieken"
+      },
+      "height": 320,
+      "settings": [],
+      "api": {
+        "getStats": {
+          "method": "GET",
+          "path": "/stats"
+        },
+        "syncCalendars": {
+          "method": "POST",
+          "path": "/sync"
+        }
+      },
+      "id": "calendar-stats"
+    },
+    "email-quota": {
+      "name": {
+        "en": "Email quota",
+        "de": "E-Mail-Kontingent",
+        "nl": "E-mailquotum"
+      },
+      "height": 260,
+      "settings": [],
+      "api": {
+        "getStatus": {
+          "method": "GET",
+          "path": "/status"
+        }
+      },
+      "id": "email-quota"
+    },
     "ical-upcoming": {
       "name": {
         "en": "Upcoming calendar events",
@@ -1743,6 +2465,96 @@
         }
       },
       "id": "ical-upcoming"
+    },
+    "saved-webhooks": {
+      "name": {
+        "en": "Saved webhook",
+        "de": "Gespeicherter Webhook",
+        "nl": "Opgeslagen webhook"
+      },
+      "height": 280,
+      "settings": [
+        {
+          "id": "webhook",
+          "type": "autocomplete",
+          "title": {
+            "en": "Webhook",
+            "de": "Webhook",
+            "nl": "Webhook"
+          }
+        }
+      ],
+      "api": {
+        "getWebhook": {
+          "method": "GET",
+          "path": "/webhook"
+        },
+        "runWebhook": {
+          "method": "POST",
+          "path": "/run"
+        }
+      },
+      "id": "saved-webhooks"
+    },
+    "timer-control": {
+      "name": {
+        "en": "Timer control",
+        "de": "Timersteuerung",
+        "nl": "Timerbediening"
+      },
+      "height": 320,
+      "settings": [
+        {
+          "id": "timer",
+          "type": "autocomplete",
+          "title": {
+            "en": "Timer",
+            "de": "Timer",
+            "nl": "Timer"
+          }
+        }
+      ],
+      "api": {
+        "getTimer": {
+          "method": "GET",
+          "path": "/timer"
+        },
+        "controlTimer": {
+          "method": "POST",
+          "path": "/control"
+        }
+      },
+      "id": "timer-control"
+    },
+    "virtual-value": {
+      "name": {
+        "en": "Virtual device value",
+        "de": "Virtueller Gerätewert",
+        "nl": "Virtuele apparaatwaarde"
+      },
+      "height": 280,
+      "settings": [
+        {
+          "id": "source",
+          "type": "autocomplete",
+          "title": {
+            "en": "Device capability",
+            "de": "Geräteeigenschaft",
+            "nl": "Apparaateigenschap"
+          }
+        }
+      ],
+      "api": {
+        "getValue": {
+          "method": "GET",
+          "path": "/value"
+        },
+        "setValue": {
+          "method": "POST",
+          "path": "/value"
+        }
+      },
+      "id": "virtual-value"
     }
   }
 }

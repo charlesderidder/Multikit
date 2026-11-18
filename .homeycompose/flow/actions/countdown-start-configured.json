@@ -1,0 +1,23 @@
+{
+  "title": {
+    "en": "Start timer",
+    "de": "Timer starten",
+    "nl": "Start timer"
+  },
+  "titleFormatted": {
+    "en": "Start timer [[timer]] using its configured duration if it is not running",
+    "de": "Timer [[timer]] mit der eingestellten Dauer starten, wenn er nicht läuft",
+    "nl": "Start timer [[timer]] met de ingestelde duur als deze niet loopt"
+  },
+  "args": [
+    {
+      "type": "autocomplete",
+      "name": "timer",
+      "title": {
+        "en": "Timer",
+        "de": "Timer",
+        "nl": "Timer"
+      }
+    }
+  ]
+}

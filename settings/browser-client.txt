@@ -1,0 +1,61 @@
+'use strict';
+
+(function initializeBrowserSettings() {
+  const prefix = '/multikit-settings';
+  const request = async (path, body) => {
+    const response = await fetch(prefix + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Multikit-Settings': '1' },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    return result;
+  };
+  const callback = (promise, done) => promise.then((result) => done(null, result), (error) => done(error));
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const language = (navigator.language || 'en').slice(0, 2).toLowerCase();
+      const locale = ['nl', 'de'].includes(language) ? language : 'en';
+      const response = await fetch(`${prefix}/${locale}.json`);
+      if (!response.ok) throw new Error(`Could not load translations: HTTP ${response.status}`);
+      const translations = await response.json();
+      const translate = (key) => key.split('.').reduce((value, part) => value && value[part], translations) || key;
+      document.querySelectorAll('[data-i18n]').forEach((element) => {
+        element.textContent = translate(element.getAttribute('data-i18n'));
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach((element) => {
+        element.placeholder = translate(element.getAttribute('data-i18n-placeholder'));
+      });
+      onHomeyReady({
+        __: translate,
+        ready: () => {},
+        alert: (message) => window.alert(message && message.message ? message.message : String(message)),
+        get: (key, done) => callback(request('/get', { key }).then((result) => result.value), done),
+        set: (key, value, done) => callback(request('/set', { key, value }), done),
+        api: (method, path, body, done) => {
+          if (method !== 'POST') {
+            done(new Error('Unsupported method.'));
+            return;
+          }
+          if (path === '/browser-password') {
+            request(`/api${path}`, body).then((result) => {
+              done(null, result);
+              if (body.password) {
+                window.location.reload();
+              } else {
+                window.location.replace('about:blank');
+              }
+            }, done);
+            return;
+          }
+          callback(request(`/api${path}`, body), done);
+        },
+      });
+    } catch (error) {
+      console.error('Could not initialize browser settings:', error);
+      window.alert(`Could not initialize browser settings: ${error.message || error}`);
+    }
+  });
+}());

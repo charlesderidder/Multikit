@@ -1,0 +1,29 @@
+{
+  "name": {
+    "en": "Saved webhook",
+    "de": "Gespeicherter Webhook",
+    "nl": "Opgeslagen webhook"
+  },
+  "height": 280,
+  "settings": [
+    {
+      "id": "webhook",
+      "type": "autocomplete",
+      "title": {
+        "en": "Webhook",
+        "de": "Webhook",
+        "nl": "Webhook"
+      }
+    }
+  ],
+  "api": {
+    "getWebhook": {
+      "method": "GET",
+      "path": "/webhook"
+    },
+    "runWebhook": {
+      "method": "POST",
+      "path": "/run"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": { "en": "Virtual mode", "nl": "Virtuele modus", "de": "Virtueller Modus" },
+  "class": "socket",
+  "capabilities": ["onoff"],
+  "images": {
+    "small": "/assets/images/mode-small.png",
+    "large": "/assets/images/mode-large.png",
+    "xlarge": "/assets/images/mode-xlarge.png"
+  },
+  "pair": [{ "id": "configure" }]
+}

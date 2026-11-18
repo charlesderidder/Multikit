@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Email quota</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 12px; }
+    header { display: flex; align-items: center; gap: 10px; }
+    img { width: 42px; height: 42px; object-fit: cover; border-radius: 12px; }
+    h1 { margin: 0; font-size: 1rem; }
+    #count { margin: 14px 0 4px; font-size: 1.8rem; font-weight: 750; }
+    progress { width: 100%; height: 10px; accent-color: #0052cc; }
+    #status, #last { color: #777; font-size: .82rem; }
+  </style>
+  <script src="/homey.js" data-origin="widget"></script>
+</head>
+<body>
+  <header><img src="./art.png" alt=""><h1 id="title"></h1></header>
+  <div id="count">-- / --</div>
+  <progress id="progress" max="500" value="0"></progress>
+  <p id="status"></p>
+  <p id="last"></p>
+  <script>
+    function onHomeyReady(Homey) {
+      const text = (key) => Homey.__(`settings.widgets.emailQuota.${key}`);
+      document.getElementById('title').textContent = text('title');
+      const count = document.getElementById('count');
+      const progress = document.getElementById('progress');
+      const status = document.getElementById('status');
+      const last = document.getElementById('last');
+      const load = async () => {
+        try {
+          const result = await Homey.api('GET', '/status', {});
+          count.textContent = `${result.sent} / ${result.limit}`;
+          progress.max = result.limit;
+          progress.value = result.sent;
+          status.textContent = `${result.configured ? text('configured') : text('notConfigured')} · ${text('recipients')} ${result.recipientsPerEmail}`;
+          last.textContent = result.lastResult
+            ? `${result.lastResult.success ? text('lastSuccess') : text('lastFailed')} ${new Date(result.lastResult.time).toLocaleTimeString()}`
+            : text('notSent');
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+        }
+      };
+      load();
+      setInterval(load, 30000);
+      Homey.ready();
+    }
+  </script>
+</body>
+</html>

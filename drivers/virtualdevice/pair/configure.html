@@ -1,0 +1,135 @@
+<form id="form" class="homey-form">
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="name" data-i18n="virtual.name"></label>
+    <input class="homey-form-input" id="name" required maxlength="80">
+  </div>
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="class" data-i18n="virtual.class"></label>
+    <select class="homey-form-select" id="class"></select>
+  </div>
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="icon" data-i18n="virtual.icon"></label>
+    <select class="homey-form-select" id="icon">
+      <option value="default" data-i18n="virtual.iconDefault"></option>
+      <option value="star" data-i18n="virtual.iconStar"></option>
+      <option value="circle" data-i18n="virtual.iconCircle"></option>
+      <option value="upload" data-i18n="virtual.iconUpload"></option>
+    </select>
+    <input id="icon-file" type="file" accept=".svg,image/svg+xml" hidden>
+  </div>
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="search" data-i18n="virtual.capabilities"></label>
+    <input class="homey-form-input" id="search" data-i18n-placeholder="virtual.search">
+    <div id="capabilities" style="max-height: 250px; overflow-y: auto"></div>
+  </div>
+  <div id="temperature" hidden>
+    <label data-i18n="virtual.min"></label>
+    <input id="min" type="number" value="12" min="-200" max="500" step="0.1">
+    <label data-i18n="virtual.max"></label>
+    <input id="max" type="number" value="32" min="-200" max="500" step="0.1">
+    <label data-i18n="virtual.step"></label>
+    <input id="step" type="number" value="0.5" min="0.1" max="5" step="0.1">
+  </div>
+  <div id="measurement" hidden>
+    <label data-i18n="virtual.decimals"></label>
+    <input id="decimals" type="number" value="1" min="0" max="5" step="1">
+  </div>
+  <button class="homey-button-primary-full" type="submit" data-i18n="virtual.add"></button>
+</form>
+<script>
+  const form = document.getElementById('form');
+  const classSelect = document.getElementById('class');
+  const list = document.getElementById('capabilities');
+  let catalog;
+  const selected = () => Array.from(list.querySelectorAll('input:checked')).map((element) => element.value);
+  function updateOptions() {
+    const values = selected();
+    document.getElementById('temperature').hidden = !values.includes('target_temperature');
+    document.getElementById('measurement').hidden = !values.includes('measure_temperature');
+  }
+  function selectPreset() {
+    const preset = catalog.presets[classSelect.value] || [];
+    const suggested = catalog.suggestions[classSelect.value] || [];
+    Array.from(list.querySelectorAll('label')).sort((a, b) => {
+      const aId = a.querySelector('input').value;
+      const bId = b.querySelector('input').value;
+      return Number(suggested.includes(bId)) - Number(suggested.includes(aId))
+        || a.textContent.localeCompare(b.textContent);
+    }).forEach((label) => {
+      const input = label.querySelector('input');
+      input.checked = preset.includes(input.value);
+      list.appendChild(label);
+    });
+    updateOptions();
+  }
+  Homey.emit('catalog').then((result) => {
+    catalog = result;
+    result.classes.sort((a, b) => a.name.localeCompare(b.name)).forEach((entry) => {
+      const option = document.createElement('option');
+      option.value = entry.id;
+      option.textContent = entry.name;
+      classSelect.appendChild(option);
+    });
+    result.capabilities.sort((a, b) => a.name.localeCompare(b.name)).forEach((entry) => {
+      const label = document.createElement('label');
+      label.style.display = 'block';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.value = entry.id;
+      label.appendChild(input);
+      label.appendChild(document.createTextNode(` ${entry.name} (${entry.id})`));
+      list.appendChild(label);
+    });
+    classSelect.value = 'socket';
+    selectPreset();
+  }).catch((error) => Homey.alert(error.message || String(error), 'error'));
+  classSelect.addEventListener('change', selectPreset);
+  document.getElementById('icon').addEventListener('change', (event) => {
+    document.getElementById('icon-file').hidden = event.target.value !== 'upload';
+  });
+  list.addEventListener('change', updateOptions);
+  document.getElementById('search').addEventListener('input', (event) => {
+    const query = event.target.value.toLowerCase();
+    list.querySelectorAll('label').forEach((label) => {
+      label.hidden = !label.textContent.toLowerCase().includes(query);
+    });
+  });
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = form.querySelector('button');
+    button.disabled = true;
+    let device;
+    let created = false;
+    try {
+      const input = {
+        name: document.getElementById('name').value,
+        class: classSelect.value,
+        capabilities: selected(),
+        temperature: {
+          min: Number(document.getElementById('min').value),
+          max: Number(document.getElementById('max').value),
+          step: Number(document.getElementById('step').value),
+        },
+        decimals: Number(document.getElementById('decimals').value),
+      };
+      const iconType = document.getElementById('icon').value;
+      const file = document.getElementById('icon-file').files[0];
+      if (iconType === 'upload' && !file) throw new Error(Homey.__('virtual.iconRequired'));
+      input.icon = { type: iconType, ...(file && iconType === 'upload' ? { svg: await file.text() } : {}) };
+      device = await Homey.emit('prepare', input);
+      await Homey.createDevice(device);
+      created = true;
+      await Homey.done();
+    } catch (error) {
+      if (device && device.data.iconId && !created) {
+        try {
+          await Homey.emit('discard_icon', device.data.iconId);
+        } catch (cleanupError) {
+          await Homey.alert(cleanupError.message || String(cleanupError), 'error');
+        }
+      }
+      await Homey.alert(error.message || String(error), 'error');
+      button.disabled = false;
+    }
+  });
+</script>

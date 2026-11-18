@@ -28,5 +28,27 @@
   },
   "1.6.2": {
     "en": "Show new and changed iCal events after synchronization, send their Flow triggers, and report per-calendar synchronization errors."
+  },
+  "1.6.3": {
+    "en": "Split countdown start and reset into separate Flow cards and allow a manual reset duration."
+  },
+  "1.6.4": {
+    "en": "Split countdown start and reset into separate Flow cards and allow a manual reset duration."
+  },
+  "1.6.5": {
+    "en": "Add controls to change the remaining time of a running countdown timer."
+  },
+  "1.7.0": {
+    "en": "Added outgoing and saved webhooks, filtered calendar triggers, a service status dashboard, new app artwork and an Easter egg.",
+    "nl": "Uitgaande en opgeslagen webhooks, gefilterde agenda-triggers, een servicestatusoverzicht, nieuwe appafbeeldingen en een easter egg toegevoegd.",
+    "de": "Ausgehende und gespeicherte Webhooks, gefilterte Kalender-Trigger, eine Dienststatusübersicht, neue App-Bilder und ein Easter Egg hinzugefügt."
+  },
+  "1.6.6": {
+    "en": "Track daily Gmail sends and limit each email to 500 recipients."
+  },
+  "1.8.0": {
+    "en": "Renamed the app to Multikit and refreshed its icon, images and widget previews. Added virtual devices and modes for Flows, with selectable capabilities and icons. Added dashboard widgets for active timers, timer control, saved webhooks, virtual device values, Gmail quota and calendar statistics. Manage app settings through a local browser, including saved webhooks and service status. Added outgoing webhooks, filtered calendar triggers and end-time conditions, configured timer start/reset actions, and Gmail usage tracking.",
+    "nl": "De app heet nu Multikit en heeft een vernieuwd icoon, nieuwe afbeeldingen en widgetvoorbeelden. Virtuele apparaten en modi voor Flows toegevoegd, met instelbare mogelijkheden en pictogrammen. Nieuwe dashboardwidgets voor actieve timers, timerbediening, opgeslagen webhooks, virtuele apparaatwaarden, Gmail-verbruik en agendastatistieken. Beheer app-instellingen via een lokale browser, inclusief opgeslagen webhooks en servicestatus. Uitgaande webhooks, gefilterde agenda-triggers en eindtijdvoorwaarden, start- en resetacties voor ingestelde timers en Gmail-verbruiksoverzicht toegevoegd.",
+    "de": "Die App heißt jetzt Multikit und hat ein neues Symbol, neue Bilder und Widget-Vorschauen. Virtuelle Geräte und Modi für Flows mit auswählbaren Fähigkeiten und Symbolen hinzugefügt. Neue Dashboard-Widgets für aktive Timer, Timersteuerung, gespeicherte Webhooks, virtuelle Gerätewerte, Gmail-Nutzung und Kalenderstatistiken. App-Einstellungen lassen sich lokal im Browser verwalten, einschließlich gespeicherter Webhooks und Dienststatus. Ausgehende Webhooks, gefilterte Kalender-Trigger und Endzeitbedingungen, Start- und Zurücksetzen-Aktionen für konfigurierte Timer sowie eine Gmail-Nutzungsübersicht hinzugefügt."
   }
 }

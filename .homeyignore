@@ -1,0 +1,7 @@
+tests/
+scripts/
+README.md
+README.txt
+package-lock.json
+yarn.lock
+dev.charlesderidder.httpapi/

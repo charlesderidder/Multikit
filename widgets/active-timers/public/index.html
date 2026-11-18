@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Active timers</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 12px; }
+    header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    img { width: 42px; height: 42px; object-fit: cover; border-radius: 12px; }
+    h1 { margin: 0; font-size: 1rem; }
+    .timer { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 0; border-bottom: 1px solid #80808033; }
+    .name { overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+    .value { font-variant-numeric: tabular-nums; font-weight: 750; }
+    .meta, #status { color: #777; font-size: .82rem; }
+    #timers { margin: 0; padding: 0; list-style: none; }
+  </style>
+  <script src="/homey.js" data-origin="widget"></script>
+</head>
+<body>
+  <header><img src="./art.png" alt=""><h1 id="title"></h1></header>
+  <p id="status"></p>
+  <ul id="timers"></ul>
+  <script>
+    function onHomeyReady(Homey) {
+      const text = (key) => Homey.__(`settings.widgets.activeTimers.${key}`);
+      const list = document.getElementById('timers');
+      const status = document.getElementById('status');
+      document.getElementById('title').textContent = text('title');
+      const format = (seconds) => {
+        const safe = Math.max(0, seconds);
+        const hours = Math.floor(safe / 3600);
+        const minutes = Math.floor((safe % 3600) / 60);
+        const remainder = safe % 60;
+        return hours > 0
+          ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
+          : `${minutes}:${String(remainder).padStart(2, '0')}`;
+      };
+      const load = async () => {
+        try {
+          const timers = await Homey.api('GET', '/timers', {});
+          list.replaceChildren();
+          status.textContent = Array.isArray(timers) && timers.length ? '' : text('empty');
+          timers.forEach((timer) => {
+            const item = document.createElement('li');
+            item.className = 'timer';
+            const name = document.createElement('div');
+            name.className = 'name';
+            name.textContent = timer.name;
+            const value = document.createElement('div');
+            value.className = 'value';
+            value.textContent = format(timer.value);
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = timer.paused
+              ? text('paused')
+              : `${text('round')} ${timer.round}${timer.roundsRemaining ? ` · ${timer.roundsRemaining} ${text('remaining')}` : ''}`;
+            item.append(name, value, meta);
+            list.appendChild(item);
+          });
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+        }
+      };
+      load();
+      setInterval(load, 1000);
+      Homey.ready();
+    }
+  </script>
+</body>
+</html>

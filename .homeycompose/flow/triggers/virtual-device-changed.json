@@ -1,0 +1,8 @@
+{
+  "title": { "en": "A virtual device control changes", "nl": "Een virtueel apparaat verandert", "de": "Ein virtuelles Gerät ändert sich" },
+  "tokens": [
+    { "name": "device", "type": "string", "title": { "en": "Device", "nl": "Apparaat", "de": "Gerät" } },
+    { "name": "variable", "type": "string", "title": { "en": "Capability", "nl": "Eigenschap", "de": "Eigenschaft" } },
+    { "name": "value", "type": "string", "title": { "en": "Value", "nl": "Waarde", "de": "Wert" } }
+  ]
+}

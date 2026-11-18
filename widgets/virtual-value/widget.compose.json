@@ -1,0 +1,29 @@
+{
+  "name": {
+    "en": "Virtual device value",
+    "de": "Virtueller Gerätewert",
+    "nl": "Virtuele apparaatwaarde"
+  },
+  "height": 280,
+  "settings": [
+    {
+      "id": "source",
+      "type": "autocomplete",
+      "title": {
+        "en": "Device capability",
+        "de": "Geräteeigenschaft",
+        "nl": "Apparaateigenschap"
+      }
+    }
+  ],
+  "api": {
+    "getValue": {
+      "method": "GET",
+      "path": "/value"
+    },
+    "setValue": {
+      "method": "POST",
+      "path": "/value"
+    }
+  }
+}

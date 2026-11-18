@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Timer control</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 12px; }
+    header { display: flex; align-items: center; gap: 10px; }
+    img { width: 42px; height: 42px; object-fit: cover; border-radius: 12px; }
+    h1 { margin: 0; font-size: 1rem; }
+    #value { margin: 14px 0 2px; font-size: 2.3rem; font-variant-numeric: tabular-nums; font-weight: 750; }
+    #state { min-height: 20px; color: #777; font-size: .85rem; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+    button { padding: 10px; border: 1px solid #80808055; border-radius: 8px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+    button.primary { border-color: #0052cc; background: #0052cc; color: #fff; }
+    button:disabled { cursor: default; opacity: .5; }
+    #status { min-height: 18px; margin-top: 8px; font-size: .82rem; }
+  </style>
+  <script src="/homey.js" data-origin="widget"></script>
+</head>
+<body>
+  <header><img src="./art.png" alt=""><h1 id="title"></h1></header>
+  <div id="value">--:--</div>
+  <div id="state"></div>
+  <div class="actions">
+    <button id="start" class="primary" type="button"></button>
+    <button id="pause" type="button"></button>
+    <button id="restart" type="button"></button>
+    <button id="stop" type="button"></button>
+  </div>
+  <p id="status" role="status" aria-live="polite"></p>
+  <script>
+    function onHomeyReady(Homey) {
+      const text = (key) => Homey.__(`settings.widgets.timerControl.${key}`);
+      const selected = Homey.getSettings().timer;
+      const id = selected && typeof selected === 'object' ? selected.id : selected;
+      const title = document.getElementById('title');
+      const value = document.getElementById('value');
+      const state = document.getElementById('state');
+      const status = document.getElementById('status');
+      const buttons = {
+        start: document.getElementById('start'),
+        pause: document.getElementById('pause'),
+        restart: document.getElementById('restart'),
+        stop: document.getElementById('stop'),
+      };
+      Object.entries(buttons).forEach(([key, button]) => { button.textContent = text(key); });
+      title.textContent = text('title');
+      const format = (seconds) => {
+        const safe = Math.max(0, seconds);
+        return `${Math.floor(safe / 60)}:${String(safe % 60).padStart(2, '0')}`;
+      };
+      const render = (timer) => {
+        title.textContent = timer.name;
+        value.textContent = format(timer.value);
+        state.textContent = timer.paused ? text('paused') : timer.running ? text('running') : text('stopped');
+        buttons.pause.textContent = timer.paused ? text('resume') : text('pause');
+      };
+      const load = async () => {
+        if (!id) {
+          state.textContent = text('notSelected');
+          Object.values(buttons).forEach((button) => { button.disabled = true; });
+          return;
+        }
+        try {
+          render(await Homey.api('GET', `/timer?id=${encodeURIComponent(id)}`, {}));
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+        }
+      };
+      const control = async (action) => {
+        Object.values(buttons).forEach((button) => { button.disabled = true; });
+        try {
+          const timer = await Homey.api('POST', '/control', {
+            timer: selected || id,
+            action,
+          });
+          render(timer);
+          status.textContent = '';
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+        } finally {
+          Object.values(buttons).forEach((button) => { button.disabled = false; });
+        }
+      };
+      buttons.start.addEventListener('click', () => control('start'));
+      buttons.pause.addEventListener('click', async () => {
+        const timer = await Homey.api('GET', `/timer?id=${encodeURIComponent(id)}`, {});
+        control(timer.paused ? 'resume' : 'pause');
+      });
+      buttons.restart.addEventListener('click', () => control('restart'));
+      buttons.stop.addEventListener('click', () => control('stop'));
+      load();
+      setInterval(load, 1000);
+      Homey.ready();
+    }
+  </script>
+</body>
+</html>

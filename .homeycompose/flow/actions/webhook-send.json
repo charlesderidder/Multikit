@@ -1,0 +1,29 @@
+{
+  "title": {
+    "en": "Send an HTTP webhook",
+    "de": "HTTP-Webhook senden",
+    "nl": "HTTP-webhook versturen"
+  },
+  "titleFormatted": {
+    "en": "Send [[method]] webhook to [[url]] with headers [[headers]] and body [[body]]",
+    "de": "[[method]]-Webhook an [[url]] mit Headern [[headers]] und Inhalt [[body]] senden",
+    "nl": "Verstuur [[method]]-webhook naar [[url]] met headers [[headers]] en inhoud [[body]]"
+  },
+  "hint": {
+    "en": "Headers must be a JSON object with string values, for example {}. HTTP status outside 200–299 fails the action. Redirects are not followed.",
+    "de": "Header müssen ein JSON-Objekt mit Textwerten sein, zum Beispiel {}. HTTP-Status außerhalb 200–299 lassen die Aktion fehlschlagen. Weiterleitungen werden nicht gefolgt.",
+    "nl": "Headers zijn een JSON-object met tekstwaarden, bijvoorbeeld {}. Een HTTP-status buiten 200–299 laat de actie mislukken. Omleidingen worden niet gevolgd."
+  },
+  "args": [
+    { "type": "dropdown", "name": "method", "values": [
+      { "id": "GET", "label": { "en": "GET", "de": "GET", "nl": "GET" } },
+      { "id": "POST", "label": { "en": "POST", "de": "POST", "nl": "POST" } },
+      { "id": "PUT", "label": { "en": "PUT", "de": "PUT", "nl": "PUT" } },
+      { "id": "PATCH", "label": { "en": "PATCH", "de": "PATCH", "nl": "PATCH" } },
+      { "id": "DELETE", "label": { "en": "DELETE", "de": "DELETE", "nl": "DELETE" } }
+    ] },
+    { "type": "text", "name": "url", "placeholder": { "en": "HTTP or HTTPS URL", "de": "HTTP- oder HTTPS-URL", "nl": "HTTP- of HTTPS-URL" } },
+    { "type": "text", "name": "headers", "placeholder": { "en": "Headers as JSON, e.g. {}", "de": "Header als JSON, z. B. {}", "nl": "Headers als JSON, bijv. {}" } },
+    { "type": "text", "name": "body", "placeholder": { "en": "Request body", "de": "Anfrageinhalt", "nl": "Verzoekinhoud" } }
+  ]
+}

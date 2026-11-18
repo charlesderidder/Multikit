@@ -1,0 +1,2627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multikit Control Center</title>
+  <style>
+    body {
+      width: min(1200px, 100%);
+      max-width: 1200px!important;
+      margin: 0 auto;
+      padding: 0 12px 12px;
+      box-sizing: border-box;
+    }
+
+    .homey-form-fieldset {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .settings-tabs {
+      display: flex!important;
+      gap: 4px!important;
+      margin: 4px 0 0px!important;
+      border-bottom: 0!important;
+    }
+
+    .settings-tab {
+      min-height: 30px!important;
+      background: transparent!important;
+    }
+
+    .settings-tab.active {
+      border-bottom: 3px solid #d32f2f !important;
+      color: #d32f2f;
+    }
+
+    .settings-panel[hidden] {
+      display: none;
+    }
+
+    .information-content {
+      line-height: 1.5;
+    }
+
+    .information-content h2 {
+      margin: 0 0 8px;
+    }
+
+    .information-content h3 {
+      margin: 20px 0 6px;
+    }
+
+    .information-content code {
+      background: #f1f2f4;
+      border-radius: 3px;
+      padding: 2px 5px;
+    }
+
+    .request-example {
+      border-left: 3px solid #d32f2f;
+      margin: 16px 0;
+      padding-left: 12px;
+    }
+
+    .request-example h3 {
+      margin-top: 0;
+    }
+
+    .request-example pre {
+      background: #f1f2f4;
+      border-radius: 3px;
+      overflow-x: auto;
+      padding: 10px;
+      white-space: pre-wrap;
+    }
+
+    .homey-form-group {
+      display: grid !important;
+      grid-template-columns: minmax(180px, 34%) minmax(0, 1fr);
+      align-items: center;
+      column-gap: 16px;
+    }
+
+    .homey-form-group.port-form-group {
+      grid-template-columns: minmax(100px, 34%) minmax(100px, 220px);
+    }
+
+    .homey-form-label {
+      margin-bottom: 0;
+    }
+
+    .homey-form-label::after {
+      content: ':';
+    }
+
+    .token-controls {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .token-controls .homey-button-secondary {
+      white-space: nowrap;
+    }
+
+    .token-controls #generate-token {
+      grid-column: 1 / -1;
+    }
+
+    .countdown-timers {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .active-countdowns {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .active-countdown {
+      display: grid;
+      grid-template-columns: minmax(100px, 1fr) auto;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .active-countdown-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .active-countdown-controls .homey-form-input {
+      width: 110px;
+    }
+
+    .countdown-timer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid #e5e5e5;
+    }
+
+    .countdown-duration {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .countdown-duration .homey-form-input {
+      width: 110px;
+    }
+
+    .ical-calendar-fields {
+      display: grid;
+      flex: 1;
+      grid-template-columns: minmax(120px, 0.4fr) minmax(200px, 1fr);
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .countdown-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .countdown-controls .homey-form-input {
+      flex: 1 1 220px;
+    }
+
+    @media (max-width: 600px) {
+      body {
+        padding: 0 12px 20px;
+      }
+
+      .homey-form-group {
+        display: block !important;
+      }
+
+      .homey-form-label {
+        margin-bottom: 6px;
+      }
+
+      .token-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .token-controls #generate-token {
+        grid-column: auto;
+      }
+
+      .countdown-timer {
+        align-items: flex-start;
+      }
+
+      .active-countdown {
+        grid-template-columns: 1fr;
+      }
+
+      .active-countdown-controls {
+        flex-wrap: wrap;
+      }
+
+      .ical-calendar-fields {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .browser-settings {
+      min-height: 100%;
+      background: #f3f6fb;
+      color: #1d2b42;
+      font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    .browser-settings *,
+    .browser-settings *::before,
+    .browser-settings *::after {
+      box-sizing: border-box;
+    }
+
+    .browser-settings body {
+      max-width: 1080px !important;
+      padding: 40px 24px 64px;
+    }
+
+    .browser-settings .homey-header {
+      position: relative;
+      min-height: 58px;
+      padding-left: 78px;
+      margin: 0 0 32px;
+    }
+
+    .browser-settings .brand-logo {
+      position: absolute;
+      left: 0;
+      top: 0;
+      display: grid;
+      place-items: center;
+      width: 58px;
+      height: 58px;
+      border-radius: 17px;
+      background: linear-gradient(145deg, #176ee8, #0647a9);
+      box-shadow: 0 8px 18px rgba(0, 82, 204, .22);
+      color: #fff;
+      font-size: 27px;
+      font-weight: 750;
+      line-height: 1;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .browser-settings .homey-title {
+      margin: 0;
+      color: #17243b;
+      font-size: 28px;
+      font-weight: 750;
+      letter-spacing: -.035em;
+      line-height: 1.2;
+    }
+
+    .browser-settings .homey-subtitle {
+      margin: 5px 0 0;
+      color: #687891;
+      font-size: 14px;
+    }
+
+    .browser-settings .settings-tabs {
+      gap: 6px !important;
+      margin: 0 0 20px !important;
+      padding: 6px;
+      overflow-x: auto;
+      background: #e8eef7;
+      border-radius: 14px;
+      scrollbar-width: thin;
+    }
+
+    .browser-settings .settings-tab {
+      flex: 1 0 auto;
+      min-height: 43px !important;
+      padding: 10px 18px;
+      border: 0;
+      border-radius: 9px;
+      color: #53647d;
+      font: inherit;
+      font-weight: 650;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .browser-settings .settings-tab:hover {
+      color: #064eb9;
+    }
+
+    .browser-settings .settings-tab.active {
+      background: #fff !important;
+      border: 0 !important;
+      box-shadow: 0 2px 8px rgba(30, 50, 80, .1);
+      color: #0052cc;
+    }
+
+    .browser-settings .settings-panel:not([hidden]) {
+      padding: 32px 36px;
+      background: #fff;
+      border: 1px solid #e3eaf3;
+      border-radius: 18px;
+      box-shadow: 0 12px 36px rgba(30, 50, 80, .07);
+    }
+
+    .browser-settings .information-content {
+      line-height: 1.65;
+    }
+
+    .browser-settings .information-content h2 {
+      margin: 0 0 8px;
+      color: #17243b;
+      font-size: 22px;
+      letter-spacing: -.025em;
+      line-height: 1.3;
+    }
+
+    .browser-settings .information-content h3 {
+      margin: 28px 0 8px;
+      color: #243650;
+      font-size: 16px;
+    }
+
+    .browser-settings .information-content p {
+      max-width: 78ch;
+      color: #586981;
+    }
+
+    .browser-settings a {
+      color: #0052cc;
+      font-weight: 600;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .browser-settings .homey-form-fieldset {
+      min-width: 0;
+      margin: 20px 0;
+      padding: 20px 22px 22px;
+      border: 1px solid #dfe7f1;
+      border-radius: 12px;
+      background: #fbfcfe;
+    }
+
+    .browser-settings .homey-form-legend {
+      padding: 0 8px;
+      color: #263a57;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .browser-settings .homey-form-fieldset p {
+      color: #596a82;
+    }
+
+    .browser-settings .homey-form-group {
+      grid-template-columns: minmax(160px, 30%) minmax(0, 1fr);
+      gap: 12px 20px;
+      margin: 15px 0;
+    }
+
+    .browser-settings .homey-form-label {
+      color: #344760;
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    .browser-settings .homey-form-label::after {
+      content: none;
+    }
+
+    .browser-settings input:not([type="checkbox"]):not([type="file"]),
+    .browser-settings select,
+    .browser-settings textarea {
+      width: 100%;
+      min-width: 0;
+      min-height: 43px;
+      padding: 9px 12px;
+      border: 1px solid #ccd7e5;
+      border-radius: 8px;
+      background: #fff;
+      color: #1d2b42;
+      font: inherit;
+    }
+
+    .browser-settings input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      accent-color: #0052cc;
+      vertical-align: middle;
+    }
+
+    .browser-settings input::placeholder {
+      color: #8290a4;
+    }
+
+    .browser-settings small {
+      display: inline-block;
+      margin-top: 5px;
+      color: #708098;
+      font-size: 13px;
+    }
+
+    .browser-settings button:not(.settings-tab):not(.brand-logo),
+    .browser-settings label[for="countdown-import"] {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: 9px 16px;
+      border: 1px solid #ccd9e9;
+      border-radius: 8px;
+      background: #fff;
+      color: #25415f;
+      font: inherit;
+      font-weight: 650;
+      line-height: 1.35;
+      text-align: center;
+      cursor: pointer;
+      transition: background-color .15s, border-color .15s, box-shadow .15s;
+    }
+
+    .browser-settings button:not(.settings-tab):not(.brand-logo):hover,
+    .browser-settings label[for="countdown-import"]:hover {
+      background: #edf4ff;
+      border-color: #9dbbe4;
+    }
+
+    .browser-settings .homey-button-primary-full {
+      min-width: 150px;
+      border-color: #0052cc !important;
+      background: #0052cc !important;
+      color: #fff !important;
+    }
+
+    .browser-settings .homey-button-primary-full:hover {
+      border-color: #003e9d !important;
+      background: #003e9d !important;
+    }
+
+    .browser-settings button:disabled,
+    .browser-settings input:disabled,
+    .browser-settings select:disabled,
+    .browser-settings textarea:disabled {
+      cursor: not-allowed;
+      opacity: .6;
+    }
+
+    .browser-settings :focus-visible {
+      outline: 3px solid #7bb3ff;
+      outline-offset: 2px;
+    }
+
+    .browser-settings .token-controls {
+      gap: 8px;
+    }
+
+    .browser-settings .token-controls #generate-token {
+      justify-self: start;
+    }
+
+    .browser-settings .countdown-controls {
+      gap: 10px;
+      margin: 16px 0;
+    }
+
+    .browser-settings .countdown-timer,
+    .browser-settings .active-countdown {
+      padding: 13px 0;
+      border-color: #e5ecf4;
+    }
+
+    .browser-settings .countdown-timer > span,
+    .browser-settings .active-countdown > span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .browser-settings .countdown-duration input,
+    .browser-settings .active-countdown-controls input {
+      width: 110px !important;
+    }
+
+    .browser-settings .information-content code,
+    .browser-settings fieldset code {
+      padding: 3px 6px;
+      border-radius: 5px;
+      background: #edf3fa;
+      color: #234665;
+      overflow-wrap: anywhere;
+    }
+
+    .browser-settings .request-example {
+      padding: 4px 0 4px 16px;
+      border-left-color: #73a8ef;
+    }
+
+    .browser-settings .request-example pre {
+      padding: 14px;
+      border: 1px solid #e2eaf4;
+      border-radius: 8px;
+      background: #f5f8fc;
+      color: #23415f;
+    }
+
+    @media (max-width: 600px) {
+      .browser-settings body {
+        padding: 24px 14px 40px;
+      }
+
+      .browser-settings .homey-header {
+        padding-left: 68px;
+        margin-bottom: 24px;
+      }
+
+      .browser-settings .brand-logo {
+        width: 52px;
+        height: 52px;
+        border-radius: 15px;
+      }
+
+      .browser-settings .homey-title {
+        font-size: 24px;
+      }
+
+      .browser-settings .settings-panel:not([hidden]) {
+        padding: 22px 18px;
+      }
+
+      .browser-settings .homey-form-fieldset {
+        padding: 16px;
+      }
+
+      .browser-settings .homey-form-group {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) !important;
+        gap: 6px;
+      }
+
+      .browser-settings .homey-form-group > span:empty {
+        display: none;
+      }
+
+      .browser-settings .countdown-timer {
+        flex-wrap: wrap;
+      }
+    }
+
+    .browser-settings {
+      background: #edf2f8;
+    }
+
+    .browser-settings body {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      align-items: start;
+      gap: 24px;
+      max-width: 1440px !important;
+      padding: 48px 40px 72px;
+    }
+
+    .browser-settings .homey-header {
+      grid-column: 1 / -1;
+      margin: 0 0 8px;
+    }
+
+    .browser-settings .settings-tabs {
+      position: sticky;
+      top: 24px;
+      display: flex !important;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 4px !important;
+      padding: 8px;
+      overflow: visible;
+      border: 1px solid #dfe8f3;
+      background: #fff;
+      box-shadow: 0 8px 26px rgba(27, 45, 70, .05);
+    }
+
+    .browser-settings .settings-tab {
+      flex: none;
+      justify-content: flex-start;
+      min-height: 48px !important;
+      text-align: left;
+    }
+
+    .browser-settings .settings-tab.active {
+      background: #eaf2ff !important;
+      box-shadow: none;
+    }
+
+    .browser-settings .settings-panel:not([hidden]) {
+      min-width: 0;
+      min-height: 420px;
+      padding: 34px 40px 40px;
+      border-radius: 20px;
+    }
+
+    .browser-settings .panel-heading {
+      margin: 0 0 8px;
+      color: #17243b;
+      font-size: 24px;
+      letter-spacing: -.03em;
+    }
+
+    .browser-settings .panel-intro {
+      max-width: 78ch;
+      margin: 0 0 24px;
+      color: #586981;
+    }
+
+    .browser-settings .settings-accordion {
+      min-width: 0;
+      margin: 14px 0;
+      overflow: hidden;
+      border: 1px solid #dce5f0;
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .browser-settings .settings-accordion > summary {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-height: 60px;
+      padding: 16px 54px 16px 20px;
+      color: #263a57;
+      font-weight: 700;
+      list-style: none;
+      cursor: pointer;
+    }
+
+    .browser-settings .settings-accordion > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .browser-settings .settings-accordion > summary::after {
+      content: '+';
+      position: absolute;
+      right: 20px;
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #edf3fa;
+      color: #416284;
+      font-size: 20px;
+      font-weight: 400;
+      line-height: 1;
+    }
+
+    .browser-settings .settings-accordion[open] > summary {
+      border-bottom: 1px solid #e6edf5;
+      background: #f8fafd;
+    }
+
+    .browser-settings .settings-accordion[open] > summary::after {
+      content: '\2212';
+    }
+
+    .browser-settings .settings-accordion > summary:hover {
+      background: #f3f7fd;
+    }
+
+    .browser-settings .accordion-content {
+      min-width: 0;
+      padding: 18px 20px 22px;
+    }
+
+    .browser-settings .accordion-content > :first-child {
+      margin-top: 0;
+    }
+
+    .browser-settings .accordion-content > :last-child {
+      margin-bottom: 0;
+    }
+
+    .browser-settings #save,
+    .browser-settings #email-save {
+      margin: 8px 8px 14px 0;
+    }
+
+    @media (max-width: 760px) {
+      .browser-settings body {
+        display: block;
+        padding: 24px 14px 40px;
+      }
+
+      .browser-settings .homey-header {
+        margin-bottom: 24px;
+      }
+
+      .browser-settings .settings-tabs {
+        position: static;
+        flex-direction: row;
+        overflow-x: auto;
+        margin-bottom: 16px !important;
+      }
+
+      .browser-settings .settings-tab {
+        flex: 1 0 auto;
+        text-align: center;
+      }
+
+      .browser-settings .settings-panel:not([hidden]) {
+        min-height: 0;
+        padding: 24px 18px;
+      }
+
+      .browser-settings .accordion-content {
+        padding: 16px;
+      }
+    }
+
+    /* Compact layout with horizontal tabs */
+    .browser-settings body {
+      display: block;
+      max-width: 1200px !important;
+      padding: 12px 16px 24px;
+    }
+
+    .browser-settings {
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .browser-settings .homey-header {
+      min-height: 36px;
+      padding-left: 48px;
+      margin: 0 0 10px;
+    }
+
+    .browser-settings .brand-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      font-size: 18px;
+    }
+
+    .browser-settings .homey-title {
+      font-size: 20px;
+    }
+
+    .browser-settings .homey-subtitle {
+      margin: 2px 0 0;
+      font-size: 12px;
+    }
+
+    .browser-settings .settings-tabs {
+      position: static;
+      flex-direction: row;
+      align-items: center;
+      gap: 2px !important;
+      margin: 0 0 10px !important;
+      padding: 4px;
+      overflow-x: auto;
+      border-radius: 10px;
+    }
+
+    .browser-settings .settings-tab {
+      flex: 0 0 auto;
+      justify-content: center;
+      min-height: 32px !important;
+      padding: 4px 14px;
+      text-align: center;
+    }
+
+    .browser-settings .settings-panel:not([hidden]) {
+      min-height: 0;
+      padding: 14px 18px 16px;
+      border-radius: 12px;
+    }
+
+    .browser-settings .panel-heading {
+      margin: 0 0 4px;
+      font-size: 18px;
+    }
+
+    .browser-settings .panel-intro {
+      margin: 0 0 10px;
+    }
+
+    .browser-settings p {
+      margin: 4px 0;
+    }
+
+    .browser-settings .settings-accordion {
+      margin: 8px 0;
+      border-radius: 8px;
+    }
+
+    .browser-settings .settings-accordion > summary {
+      min-height: 38px;
+      padding: 8px 44px 8px 14px;
+    }
+
+    .browser-settings .settings-accordion > summary::after {
+      right: 12px;
+      width: 22px;
+      height: 22px;
+      font-size: 16px;
+    }
+
+    .browser-settings .accordion-content {
+      padding: 10px 14px 12px;
+    }
+
+    .browser-settings .homey-form-fieldset {
+      margin: 10px 0;
+      padding: 10px 14px 12px;
+      border-radius: 8px;
+    }
+
+    .browser-settings .homey-form-group {
+      gap: 6px 14px;
+      margin: 8px 0;
+    }
+
+    .browser-settings input:not([type="checkbox"]):not([type="file"]),
+    .browser-settings select,
+    .browser-settings textarea {
+      min-height: 32px;
+      padding: 4px 10px;
+    }
+
+    .browser-settings button:not(.settings-tab):not(.brand-logo),
+    .browser-settings label[for="countdown-import"] {
+      min-height: 32px;
+      padding: 4px 12px;
+    }
+
+    .browser-settings #save,
+    .browser-settings #email-save {
+      margin: 4px 6px 6px 0;
+    }
+
+    .browser-settings .countdown-controls {
+      gap: 6px;
+      margin: 8px 0;
+    }
+
+    .browser-settings .countdown-timer,
+    .browser-settings .active-countdown {
+      padding: 6px 0;
+    }
+
+    .browser-settings .information-content {
+      line-height: 1.45;
+    }
+
+    .browser-settings .information-content h3 {
+      margin: 14px 0 4px;
+    }
+
+    .browser-settings .request-example {
+      margin: 8px 0;
+    }
+
+    .browser-settings .request-example pre {
+      padding: 8px;
+    }
+
+    .events-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .events-table th,
+    .events-table td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #e5ecf4;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .events-table th {
+      position: sticky;
+      top: 0;
+      background: #f3f7fd;
+      color: #344760;
+      font-weight: 650;
+    }
+
+    .events-table tbody tr:hover {
+      background: #f7faff;
+    }
+
+    .events-table tr.event-active {
+      background: #e3f6e8;
+    }
+
+    .virtual-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin: 8px 0 16px;
+    }
+
+    .virtual-option {
+      padding: 14px 16px;
+      border: 1px solid #dce5f0;
+      border-radius: 10px;
+      background: #f8fafd;
+    }
+
+    .virtual-option h3 {
+      margin: 0 0 6px;
+    }
+
+    .virtual-option ul,
+    .virtual-capabilities-list {
+      margin-top: 6px;
+      margin-bottom: 0;
+      padding-left: 20px;
+    }
+
+    .widget-gallery {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+
+    .widget-gallery-card {
+      display: grid;
+      grid-template-columns: 54px minmax(0, 1fr);
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border: 1px solid #dce5f0;
+      border-radius: 10px;
+      background: #f8fafd;
+    }
+
+    .widget-gallery-card img {
+      width: 54px;
+      height: 54px;
+      border-radius: 10px;
+      object-fit: cover;
+    }
+
+    .widget-gallery-card strong {
+      color: #263a57;
+      line-height: 1.25;
+    }
+
+    @media (max-width: 640px) {
+      .virtual-options {
+        grid-template-columns: 1fr;
+      }
+
+      .widget-gallery {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .events-table td.event-date {
+      white-space: nowrap;
+    }
+
+    #ical-events-table:has(tbody:empty) {
+      display: none;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 8px;
+    }
+
+    .status-chips {
+      display: flex;
+      flex: 1;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .status-chip::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .status-chip.ok { background: #e3f6e8; border-color: #8fd3a3; color: #17692f; }
+    .status-chip.error { background: #fde8e8; border-color: #f1a5a5; color: #a31616; }
+    .status-chip.warn { background: #fff4d9; border-color: #f0cf7a; color: #8a5a00; }
+    .status-chip.busy { background: #e5f0ff; border-color: #9dc2f5; color: #0a4aa8; }
+    .status-chip.idle { background: #eef1f5; border-color: #d3dae4; color: #5a6a80; }
+
+    .status-chip .status-detail { color: #a31616; }
+
+    .browser-settings .status-refresh {
+      min-height: 28px;
+      padding: 2px 10px;
+    }
+
+    @media (max-width: 760px) {
+      .browser-settings body {
+        padding: 10px 10px 20px;
+      }
+
+      .browser-settings .settings-panel:not([hidden]) {
+        padding: 12px;
+      }
+
+      .browser-settings .accordion-content {
+        padding: 10px;
+      }
+    }
+  </style>
+  <script
+      type="text/javascript"
+      src="/homey.js"
+      data-origin="settings"
+  ></script>
+</head>
+<body>
+<header class="homey-header">
+  <button type="button" class="brand-logo" id="brand-logo" aria-label="Multikit">M</button>
+  <h1 class="homey-title" data-i18n="settings.title">
+    <!-- This will be filled with the translated string with key 'settings.title'. -->
+  </h1>
+  <p class="homey-subtitle" data-i18n="settings.subtitle">
+    <!-- This field will also be translated -->
+  </p>
+  <p id="easter-egg" role="status" aria-live="polite" hidden></p>
+</header>
+
+<section class="status-bar" id="status-bar" aria-label="Status">
+  <div id="status-results" class="status-chips"></div>
+  <span id="status-message" role="status" aria-live="polite"></span>
+  <button type="button" id="status-refresh" class="status-refresh" title="Refresh" aria-label="Refresh">&#x21bb;</button>
+</section>
+
+<div class="settings-tabs" role="tablist">
+  <button type="button" class="settings-tab active" id="api-tab" role="tab" aria-selected="true" data-i18n="settings.tabs.api">API</button>
+  <button type="button" class="settings-tab" id="webhook-tab" role="tab" aria-selected="false" data-i18n="settings.webhooks.tab">Webhooks</button>
+  <button type="button" class="settings-tab" id="email-tab" role="tab" aria-selected="false" data-i18n="settings.tabs.email">Email</button>
+  <button type="button" class="settings-tab" id="ical-tab" role="tab" aria-selected="false" data-i18n="settings.tabs.ical">iCal</button>
+  <button type="button" class="settings-tab" id="countdown-tab" role="tab" aria-selected="false" data-i18n="settings.tabs.countdown">Timers</button>
+  <button type="button" class="settings-tab" id="virtual-tab" role="tab" aria-selected="false" data-i18n="settings.tabs.virtual">Virtual devices</button>
+  <button type="button" class="settings-tab" id="information-tab" role="tab" aria-selected="false" data-i18n="settings.tabs.information">Informatie</button>
+</div>
+
+<section class="settings-panel" id="webhook-panel" role="tabpanel" hidden>
+  <div class="information-content">
+    <h2 data-i18n="settings.webhooks.title">Saved webhooks</h2>
+    <p data-i18n="settings.webhooks.intro">Save webhooks here and select them in the saved webhook Flow action.</p>
+    <p data-i18n="settings.webhooks.security">URLs, headers and bodies can contain secrets. They are stored in Homey settings and visible to browser users. Use a trusted network and HTTPS when possible.</p>
+    <details class="settings-accordion" open>
+      <summary data-i18n="settings.webhooks.list">Saved webhooks</summary>
+      <div class="accordion-content">
+        <ul id="webhook-list" class="countdown-timers"></ul>
+        <p id="webhook-empty" data-i18n="settings.webhooks.empty">No saved webhooks.</p>
+      </div>
+    </details>
+    <details class="settings-accordion" open>
+      <summary data-i18n="settings.webhooks.form">Add or edit a webhook</summary>
+      <div class="accordion-content">
+        <div class="homey-form-group">
+          <label class="homey-form-label" for="webhook-name" data-i18n="settings.webhooks.name">Name</label>
+          <input class="homey-form-input" id="webhook-name" type="text" maxlength="80" />
+        </div>
+        <div class="homey-form-group">
+          <label class="homey-form-label" for="webhook-url" data-i18n="settings.webhooks.url">URL</label>
+          <input class="homey-form-input" id="webhook-url" type="url" maxlength="4096" autocomplete="off" />
+        </div>
+        <div class="homey-form-group">
+          <label class="homey-form-label" for="webhook-method" data-i18n="settings.webhooks.method">Method</label>
+          <select class="homey-form-input" id="webhook-method">
+            <option>GET</option><option>POST</option><option>PUT</option><option>PATCH</option><option>DELETE</option>
+          </select>
+        </div>
+        <div class="homey-form-group">
+          <label class="homey-form-label" for="webhook-headers" data-i18n="settings.webhooks.headers">Headers (JSON)</label>
+          <textarea class="homey-form-input" id="webhook-headers" rows="3" placeholder="{}"></textarea>
+        </div>
+        <div class="homey-form-group">
+          <label class="homey-form-label" for="webhook-body" data-i18n="settings.webhooks.body">Request body</label>
+          <textarea class="homey-form-input" id="webhook-body" rows="4"></textarea>
+        </div>
+        <button type="button" id="webhook-save" class="homey-button-primary-full" data-i18n="settings.webhooks.save">Save webhook</button>
+        <button type="button" id="webhook-cancel" class="homey-button-secondary" data-i18n="settings.webhooks.cancel">Clear form</button>
+        <p id="webhook-message" role="status" aria-live="polite"></p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section class="settings-panel" id="countdown-panel" role="tabpanel" hidden>
+  <div class="information-content">
+    <h2 data-i18n="settings.countdown.title">Countdown timers</h2>
+    <p data-i18n="settings.countdown.intro">Create timers here, then select them in the countdown flow cards.</p>
+    <details class="settings-accordion" open>
+    <summary data-i18n="settings.countdown.activeTitle">Active timers</summary>
+    <div class="accordion-content">
+    <ul id="active-countdowns" class="active-countdowns" aria-live="polite"></ul>
+    <p id="active-countdowns-empty" data-i18n="settings.countdown.activeEmpty">No active countdown timers.</p>
+    </div>
+    </details>
+    <details class="settings-accordion" open>
+    <summary data-i18n="settings.browser.timerList">Manage timers</summary>
+    <div class="accordion-content">
+    <ul id="countdown-timers" class="countdown-timers"></ul>
+    <div class="countdown-controls">
+      <input class="homey-form-input" id="countdown-name" type="text" maxlength="80" data-i18n-placeholder="settings.countdown.namePlaceholder" placeholder="Timer name" />
+      <button type="button" id="countdown-add" class="homey-button-secondary" data-i18n="settings.countdown.add">Add timer</button>
+    </div>
+    <div class="countdown-controls">
+      <button type="button" id="countdown-export" class="homey-button-secondary" data-i18n="settings.countdown.export">Export timers</button>
+      <label class="homey-button-secondary" for="countdown-import" data-i18n="settings.countdown.import">Import timers</label>
+      <input id="countdown-import" type="file" accept="application/json,.json" hidden />
+    </div>
+    <p id="countdown-message" role="status" style="display: none;"></p>
+    </div>
+    </details>
+  </div>
+</section>
+
+<section class="settings-panel" id="email-panel" role="tabpanel" hidden>
+  <div class="information-content">
+    <h2 data-i18n="settings.email.title">Email settings</h2>
+    <p data-i18n="settings.email.intro">Configure Gmail to send email from a Homey Flow.</p>
+    <details class="settings-accordion">
+    <summary data-i18n="settings.browser.help">Help</summary>
+    <div class="accordion-content">
+    <p data-i18n="settings.email.instructions">Use a Google app password, not your regular Google account password. App passwords require 2-Step Verification.</p>
+    <p><a href="https://support.google.com/accounts/answer/185833" target="_blank" rel="noreferrer" data-i18n="settings.email.appPasswordLink">Google app password instructions</a></p>
+    <p data-i18n="settings.email.flowInstructions">After saving these settings, use the “Send an email with Gmail” action card in a Flow. Connect it to a Multikit trigger to send an email when a request is received.</p>
+    <p data-i18n="settings.email.securityNote">The app password is stored in Homey settings. Keep API token authentication enabled if email sending can be triggered through Multikit.</p>
+    </div>
+    </details>
+    <p id="email-daily-usage" role="status" aria-live="polite" data-i18n="settings.email.dailyUsageLoading">Today's email usage is loading.</p>
+  </div>
+  <details class="settings-accordion" open>
+    <summary data-i18n="settings.email.accountTitle">Gmail account</summary>
+    <div class="accordion-content">
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="gmail-address" data-i18n="settings.email.addressLabel">Gmail address</label>
+      <input class="homey-form-input" id="gmail-address" type="email" autocomplete="username" />
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="gmail-app-password" data-i18n="settings.email.appPasswordLabel">Google app password</label>
+      <div>
+        <input class="homey-form-input" id="gmail-app-password" type="password" autocomplete="new-password" />
+        <small data-i18n="settings.email.appPasswordHint">Leave blank to keep the saved password.</small>
+      </div>
+    </div>
+    <div class="homey-form-group">
+      <span></span>
+      <label><input id="clear-gmail-app-password" type="checkbox" /> <span data-i18n="settings.email.clearAppPassword">Clear the saved app password</span></label>
+    </div>
+    </div>
+  </details>
+  <button id="email-save" class="homey-button-primary-full" data-i18n="settings.save">Save</button>
+  <p id="email-save-confirmation" data-i18n="settings.email.saved" style="display: none; color: green; margin-top: 8px;"></p>
+  <button type="button" id="email-test" class="homey-button-secondary-full" data-i18n="settings.email.test">Test email</button>
+  <p id="email-test-status" role="status" aria-live="polite" style="display: none; margin-top: 8px;"></p>
+</section>
+
+<section class="settings-panel" id="ical-panel" role="tabpanel" hidden>
+  <div class="information-content">
+    <h2 data-i18n="settings.ical.title">iCal calendars</h2>
+    <p data-i18n="settings.ical.intro">Add calendar URLs to synchronize events and use them in Homey Flows.</p>
+    <details class="settings-accordion">
+    <summary data-i18n="settings.browser.help">Help</summary>
+    <div class="accordion-content">
+    <p data-i18n="settings.ical.privacy">Calendar URLs may contain private access tokens. Store them securely and do not share them.</p>
+    <p data-i18n="settings.ical.googleHelp">Google Calendar: copy the Secret address in iCal format from the calendar settings.</p>
+    <p><a href="https://calendar.google.com/" target="_blank" rel="noreferrer" data-i18n="settings.ical.googleLink">Open Google Calendar</a></p>
+    <p data-i18n="settings.ical.outlookHelp">Outlook: publish the calendar and copy its ICS link.</p>
+    <p><a href="https://outlook.office.com/calendar/" target="_blank" rel="noreferrer" data-i18n="settings.ical.outlookLink">Open Outlook Calendar</a></p>
+    <p data-i18n="settings.ical.icloudHelp">iCloud: enable Public Calendar and use the original link. Apple's default Home and Work calendars do not provide public links.</p>
+    <p><a href="https://www.icloud.com/calendar/" target="_blank" rel="noreferrer" data-i18n="settings.ical.icloudLink">Open iCloud Calendar</a></p>
+    </div>
+    </details>
+    <details class="settings-accordion" open>
+    <summary data-i18n="settings.ical.calendarsTitle">Calendars</summary>
+    <div class="accordion-content">
+    <ul id="ical-calendars" class="countdown-timers"></ul>
+    <div class="countdown-controls">
+      <input class="homey-form-input" id="ical-name" type="text" maxlength="80" data-i18n-placeholder="settings.ical.namePlaceholder" placeholder="Calendar name" />
+      <input class="homey-form-input" id="ical-url" type="url" data-i18n-placeholder="settings.ical.urlPlaceholder" placeholder="https://example.com/calendar.ics" />
+      <button type="button" id="ical-add" class="homey-button-secondary" data-i18n="settings.ical.add">Add calendar</button>
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="ical-auto-sync" data-i18n="settings.ical.autoSyncLabel">Automatic synchronization</label>
+      <input id="ical-auto-sync" type="checkbox" checked />
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="ical-sync-interval" data-i18n="settings.ical.syncIntervalLabel">Sync interval (minutes)</label>
+      <input class="homey-form-input" id="ical-sync-interval" type="number" min="5" max="1440" value="15" />
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="ical-sync-days" data-i18n="settings.ical.syncDaysLabel">Events to sync ahead (days)</label>
+      <input class="homey-form-input" id="ical-sync-days" type="number" min="1" max="365" value="30" />
+    </div>
+    <button id="ical-save" class="homey-button-primary-full" data-i18n="settings.save">Save</button>
+    <p id="ical-save-status" role="status" aria-live="polite" style="display: none; margin-top: 8px;"></p>
+    <button type="button" id="ical-sync" class="homey-button-secondary-full" data-i18n="settings.ical.syncNow">Synchronize now</button>
+    <p data-i18n="settings.ical.flowInfo">Use the iCal Flow cards to sync calendars, create local events, and trigger automations when events start or end.</p>
+    </div>
+    </details>
+    <details class="settings-accordion" open>
+    <summary data-i18n="settings.ical.eventsTitle">Agenda</summary>
+    <div class="accordion-content">
+    <label class="homey-form-label" for="ical-events-search" data-i18n="settings.ical.searchLabel">Search events</label>
+    <input id="ical-events-search" type="search" data-i18n-placeholder="settings.ical.searchPlaceholder" placeholder="Search title, calendar or location" />
+    <div style="overflow-x: auto">
+    <table class="events-table" id="ical-events-table">
+      <thead>
+        <tr>
+          <th data-i18n="settings.ical.colStart">Start</th>
+          <th data-i18n="settings.ical.colEnd">End</th>
+          <th data-i18n="settings.ical.colTitle">Title</th>
+          <th data-i18n="settings.ical.colCalendar">Calendar</th>
+          <th data-i18n="settings.ical.colLocation">Location</th>
+        </tr>
+      </thead>
+      <tbody id="ical-events"></tbody>
+    </table>
+    </div>
+    <p id="ical-events-empty" data-i18n="settings.ical.eventsEmpty" hidden>No upcoming events.</p>
+    <p id="ical-events-no-matches" data-i18n="settings.ical.noMatches" hidden>No matching events.</p>
+    <p id="ical-events-error" role="status" aria-live="polite"></p>
+    </div>
+    </details>
+  </div>
+</section>
+
+<section class="settings-panel" id="api-panel" role="tabpanel">
+  <h2 class="panel-heading" data-i18n="settings.tabs.api">API</h2>
+  <p class="panel-intro" data-i18n="settings.information.intro">Configure the local HTTP server.</p>
+  <details class="settings-accordion" open>
+    <summary data-i18n="settings.serverSettings">Server Settings</summary>
+    <div class="accordion-content">
+    <div class="homey-form-group port-form-group">
+      <label class="homey-form-label" for="server-port" data-i18n="settings.port.label">Port</label>
+      <input class="homey-form-input" id="server-port" type="number" value="3000" />
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="cors-enabled" data-i18n="settings.cors.label">CORS (default: enabled)</label>
+      <select class="homey-form-select" name="cors-enabled" id="cors-enabled">
+        <option value="true" data-i18n="settings.cors.enabled">Enabled</option>
+        <option value="false" data-i18n="settings.cors.disabled">Disabled</option>
+      </select>
+    </div>
+    <div class="homey-form-group" id="additional-cors-settings" style="display: none;">
+      <label class="homey-form-label" for="cors-acao" data-i18n="settings.corsAccessControlAllowOrigin.label">Access-Control-Allow-Origin (default: *)</label>
+      <input class="homey-form-input" id="cors-acao" type="text" value="*" />
+    </div>
+    </div>
+  </details>
+  <details class="settings-accordion" open>
+    <summary data-i18n="settings.authentication.title">API authentication</summary>
+    <div class="accordion-content">
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="auth-enabled" data-i18n="settings.authentication.label">API token authentication</label>
+      <select class="homey-form-select" id="auth-enabled">
+        <option value="false" data-i18n="settings.authentication.disabled">Disabled</option>
+        <option value="true" data-i18n="settings.authentication.enabled">Enabled</option>
+      </select>
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="api-token" data-i18n="settings.authentication.tokenLabel">API token</label>
+      <div class="token-controls">
+        <input class="homey-form-input" id="api-token" type="password" autocomplete="off" />
+        <button type="button" id="toggle-token" class="homey-button-secondary" data-i18n="settings.authentication.show">Show</button>
+        <button type="button" id="generate-token" class="homey-button-secondary-full" data-i18n="settings.authentication.generate">Generate new token</button>
+        <small class="token-usage" data-i18n="settings.authentication.usage">Use in the URL: /informatie?token=abc</small>
+      </div>
+    </div>
+    </div>
+  </details>
+  <details class="settings-accordion">
+    <summary data-i18n="settings.browser.title">Browser settings</summary>
+    <div class="accordion-content">
+    <p data-i18n="settings.browser.hint">Choose a username and password of at least 6 characters for browser access.</p>
+    <p data-i18n="settings.browser.warning">HTTP is not encrypted. Use only a trusted local network; do not expose this port to the internet.</p>
+    <p><code>http://HOMEY_IP:3000/multikit-settings/</code></p>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="browser-username" data-i18n="settings.browser.username">Browser username</label>
+      <input class="homey-form-input" id="browser-username" type="text" autocomplete="username" maxlength="64" />
+    </div>
+    <div class="homey-form-group">
+      <label class="homey-form-label" for="browser-password" data-i18n="settings.browser.password">New browser password</label>
+      <input class="homey-form-input" id="browser-password" type="password" autocomplete="new-password" />
+    </div>
+    <button type="button" id="browser-password-save" class="homey-button-secondary" data-i18n="settings.browser.save">Enable or change password</button>
+    <button type="button" id="browser-password-disable" class="homey-button-secondary" data-i18n="settings.browser.disable">Disable browser access</button>
+    <p id="browser-password-status" role="status" aria-live="polite"></p>
+    </div>
+  </details>
+  <button id="save" class="homey-button-primary-full" data-i18n="settings.save">Save</button>
+  <p id="save-confirmation" data-i18n="settings.saved" style="display: none; color: green; margin-top: 8px;"></p>
+  <details class="settings-accordion">
+  <summary data-i18n="settings.browser.apiHelp">API guide</summary>
+  <div class="accordion-content information-content">
+    <h2 data-i18n="settings.api.title">API gebruiken</h2>
+    <p data-i18n="settings.api.intro">Gebruik de triggerkaart in Advanced Flow om een route en HTTP-methode te registreren.</p>
+    <h3 data-i18n="settings.api.routeTitle">Voorbeeld van een route</h3>
+    <p><code>/informatie</code></p>
+    <p data-i18n="settings.api.routeText">De slash aan het begin is optioneel. informatie en /informatie verwijzen naar dezelfde route.</p>
+    <h3 data-i18n="settings.api.methodsTitle">HTTP-methoden</h3>
+    <p><code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>PATCH</code>, <code>DELETE</code>, <code>HEAD</code> en <code>OPTIONS</code></p>
+    <p data-i18n="settings.api.methodsText">Gebruik POST, PUT en PATCH voor JSON-data. Gebruik GET om data op te vragen en DELETE om een actie of resource te verwijderen.</p>
+    <h3 data-i18n="settings.api.responseTitle">Antwoord vanuit Flow</h3>
+    <p data-i18n="settings.api.responseText">Gebruik de actiekaart Reageer met... om een JSON-antwoord terug te sturen, of Reageer met 200 voor een eenvoudige bevestiging.</p>
+    <h3 data-i18n="settings.api.fieldTitle">Een enkele waarde opvragen</h3>
+    <p data-i18n="settings.api.fieldText">Voeg ?veld= toe aan een GET-request om een enkele eigenschap uit het Flow-antwoord op te vragen. field= is ook mogelijk. De eigenschap mag rechtstreeks in het antwoord of binnen data staan.</p>
+    <pre>GET /alles?veld=Zonsopkomst</pre>
+  </div>
+  </details>
+</section>
+
+<section class="settings-panel" id="virtual-panel" role="tabpanel" hidden>
+  <div class="information-content">
+    <h2 data-i18n="settings.virtual.title">Virtual devices and modes</h2>
+    <p data-i18n="settings.virtual.intro">Add virtual devices and independent modes through the Homey Devices screen.</p>
+    <details class="settings-accordion" open>
+      <summary data-i18n="settings.virtual.addTitle">Add a virtual item</summary>
+      <div class="accordion-content">
+        <p data-i18n="settings.virtual.addText">Open Devices in Homey, select Add device, choose Multikit, and select Virtual device or Virtual mode. Pairing and device storage take place in Homey, not in this browser page.</p>
+        <div class="virtual-options">
+          <article class="virtual-option">
+            <h3 data-i18n="settings.virtual.deviceTitle">Virtual device</h3>
+            <p data-i18n="settings.virtual.deviceText">A configurable Homey device with controls and/or sensor values.</p>
+            <ul>
+              <li data-i18n="settings.virtual.deviceName">Name: 1 to 80 characters.</li>
+              <li data-i18n="settings.virtual.deviceClass">Choose a supported device class.</li>
+              <li data-i18n="settings.virtual.deviceCapabilities">Select at least one searchable capability; suggested capabilities are listed first.</li>
+              <li data-i18n="settings.virtual.deviceTemperature">For target temperature, choose a range from -200 to 500 °C with a step up to 5. For measured temperature, choose 0 to 5 decimals.</li>
+            </ul>
+          </article>
+          <article class="virtual-option">
+            <h3 data-i18n="settings.virtual.modeTitle">Virtual mode</h3>
+            <p data-i18n="settings.virtual.modeText">An independent on/off mode for organizing Homey Flows.</p>
+            <ul>
+              <li data-i18n="settings.virtual.modeName">Name: 1 to 80 characters.</li>
+              <li data-i18n="settings.virtual.modeCapability">Uses the standard on/off capability.</li>
+              <li data-i18n="settings.virtual.modeSeparate">Does not mirror or control another device.</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </details>
+    <details class="settings-accordion">
+      <summary data-i18n="settings.virtual.iconsTitle">Icons and compatibility</summary>
+      <div class="accordion-content">
+        <p data-i18n="settings.virtual.iconText">Choose the default, star, circle, or upload a simple SVG no larger than 256 KB. Uploaded SVG files may contain only basic shapes and paths; scripts, external references, styles, and unsupported elements are rejected. Deleting the device also deletes its uploaded icon.</p>
+        <p data-i18n="settings.virtual.compatibilityText">Available device classes and capabilities depend on the Homey software version. The pairing page only shows combinations supported by your Homey.</p>
+      </div>
+    </details>
+    <details class="settings-accordion" open>
+      <summary data-i18n="settings.virtual.flowsTitle">Flows and values</summary>
+      <div class="accordion-content">
+        <p data-i18n="settings.virtual.controlsText">Control changes use Homey's standard capability cards. Virtual devices additionally provide device-specific and app-wide changed triggers with the device name, capability ID, and value.</p>
+        <ul class="virtual-capabilities-list">
+          <li data-i18n="settings.virtual.valueAction">Set a virtual sensor value: select a capability or enter its ID in a Flow. The value must match its type and limits.</li>
+          <li data-i18n="settings.virtual.sensorTrigger">Sensor values written through the set-value actions do not explicitly fire the custom changed triggers; standard Homey capability cards may still react.</li>
+          <li data-i18n="settings.virtual.modeTriggers">Modes provide custom on, off, and changed triggers. The two silent actions change the mode without explicitly firing those custom triggers.</li>
+          <li data-i18n="settings.virtual.storage">A virtual device stores only its own values. It is not a physical device and does not automatically copy values from a real sensor.</li>
+        </ul>
+      </div>
+    </details>
+    <details class="settings-accordion" open>
+      <summary data-i18n="settings.widgets.galleryTitle">Dashboard widgets</summary>
+      <div class="accordion-content">
+        <p data-i18n="settings.widgets.galleryIntro">Add these widgets from the Homey dashboard and configure any required timer, webhook, or virtual value.</p>
+        <div class="widget-gallery">
+          <article class="widget-gallery-card"><img src="/multikit-settings/widget-images/active-timers.png" alt=""><strong data-i18n="settings.widgets.activeTimers.title">Active timers</strong></article>
+          <article class="widget-gallery-card"><img src="/multikit-settings/widget-images/saved-webhooks.png" alt=""><strong data-i18n="settings.widgets.savedWebhooks.title">Saved webhook</strong></article>
+          <article class="widget-gallery-card"><img src="/multikit-settings/widget-images/virtual-value.png" alt=""><strong data-i18n="settings.widgets.virtualValue.title">Virtual device value</strong></article>
+          <article class="widget-gallery-card"><img src="/multikit-settings/widget-images/timer-control.png" alt=""><strong data-i18n="settings.widgets.timerControl.title">Timer control</strong></article>
+          <article class="widget-gallery-card"><img src="/multikit-settings/widget-images/email-quota.png" alt=""><strong data-i18n="settings.widgets.emailQuota.title">Email quota</strong></article>
+          <article class="widget-gallery-card"><img src="/multikit-settings/widget-images/calendar-stats.png" alt=""><strong data-i18n="settings.widgets.calendarStats.title">Calendar statistics</strong></article>
+        </div>
+      </div>
+    </details>
+  </div>
+</section>
+
+<section class="settings-panel" id="information-panel" role="tabpanel" hidden>
+  <div class="information-content">
+    <h2 data-i18n="settings.information.title">How the API settings work</h2>
+    <p data-i18n="settings.information.intro">Configure the local HTTP server here. Changes take effect after saving and restarting the app if Homey indicates that a restart is required.</p>
+    <details class="settings-accordion" open>
+    <summary data-i18n="settings.information.serverTitle">Server settings</summary>
+    <div class="accordion-content">
+    <p data-i18n="settings.information.serverText">Port determines where the API listens. CORS controls whether browser-based clients may make cross-origin requests. Access-Control-Allow-Origin limits which origin is allowed when CORS is enabled.</p>
+    </div>
+    </details>
+    <details class="settings-accordion">
+    <summary data-i18n="settings.information.routesTitle">Routes and methods</summary>
+    <div class="accordion-content">
+    <p data-i18n="settings.information.routesText">Create a trigger flow with a route such as informatie and select its HTTP method. A leading slash is optional, so informatie and /informatie are equivalent.</p>
+    <p data-i18n="settings.information.methodsText">Supported methods are GET, POST, PUT, PATCH, DELETE, HEAD, and OPTIONS. POST, PUT, and PATCH can receive JSON in the request body.</p>
+    </div>
+    </details>
+    <details class="settings-accordion">
+    <summary data-i18n="settings.information.tokenTitle">API token</summary>
+    <div class="accordion-content">
+    <p data-i18n="settings.information.tokenText">Enable token authentication and generate a token. The recommended format is the Authorization header. For simple URL clients, add the token as shown below.</p>
+    <p><code>/informatie?token=abc</code></p>
+    <p data-i18n="settings.information.headerText">The token is checked before a Homey flow starts. Generating a new token invalidates the old token. Do not share the token or expose the API port directly to the public internet.</p>
+    </div>
+    </details>
+    <details class="settings-accordion">
+    <summary data-i18n="settings.browser.examples">Examples and documentation</summary>
+    <div class="accordion-content">
+    <p data-i18n="settings.examples.intro">Register the route and method in an Advanced Flow trigger, then use one of these requests from a client or HomeyScript.</p>
+    <div class="request-example">
+      <h3>GET</h3>
+      <p data-i18n="settings.examples.get1">Read the current status.</p>
+      <pre>GET /informatie?token=abc</pre>
+      <p data-i18n="settings.examples.get2">Read a specific room value.</p>
+      <pre>GET /woonkamer/temperatuur?token=abc</pre>
+      <p data-i18n="settings.examples.get3">Read all available data.</p>
+      <pre>GET /alles?token=abc</pre>
+      <p data-i18n="settings.examples.get4">Read a single value from the response.</p>
+      <pre>GET /alles?veld=Zonsopkomst&amp;token=abc</pre>
+    </div>
+    <div class="request-example">
+      <h3>POST</h3>
+      <p data-i18n="settings.examples.post1">Create a new item.</p>
+      <pre>POST /apparaat
+{"name":"lamp woonkamer","type":"light"}</pre>
+      <p data-i18n="settings.examples.post2">Start a scene.</p>
+      <pre>POST /scene/avond
+{"brightness":40}</pre>
+      <p data-i18n="settings.examples.post3">Send an event to Homey.</p>
+      <pre>POST /event
+{"event":"deur geopend","source":"sensor"}</pre>
+    </div>
+    <div class="request-example">
+      <h3>PUT</h3>
+      <p data-i18n="settings.examples.put1">Replace a complete device configuration.</p>
+      <pre>PUT /apparaat/woonkamer
+{"enabled":true,"brightness":80}</pre>
+      <p data-i18n="settings.examples.put2">Replace a complete schedule.</p>
+      <pre>PUT /schema/avond
+{"start":"20:00","action":"on"}</pre>
+      <p data-i18n="settings.examples.put3">Set a complete thermostat state.</p>
+      <pre>PUT /thermostaat
+{"target":21,"mode":"heat"}</pre>
+    </div>
+    <div class="request-example">
+      <h3>PATCH</h3>
+      <p data-i18n="settings.examples.patch1">Change only the brightness.</p>
+      <pre>PATCH /apparaat/woonkamer
+{"brightness":50}</pre>
+      <p data-i18n="settings.examples.patch2">Change only the target temperature.</p>
+      <pre>PATCH /thermostaat
+{"target":20}</pre>
+      <p data-i18n="settings.examples.patch3">Change only the enabled state.</p>
+      <pre>PATCH /apparaat/woonkamer
+{"enabled":false}</pre>
+    </div>
+    <div class="request-example">
+      <h3>DELETE</h3>
+      <p data-i18n="settings.examples.delete1">Remove a saved device.</p>
+      <pre>DELETE /apparaat/test</pre>
+      <p data-i18n="settings.examples.delete2">Remove a schedule.</p>
+      <pre>DELETE /schema/avond</pre>
+      <p data-i18n="settings.examples.delete3">Clear a temporary value.</p>
+      <pre>DELETE /waarde/tijdelijk</pre>
+    </div>
+    <div class="request-example">
+      <h3>HEAD</h3>
+      <p data-i18n="settings.examples.head1">Check whether an endpoint is available without downloading its response.</p>
+      <pre>HEAD /informatie</pre>
+      <p data-i18n="settings.examples.head2">Check whether a device endpoint exists.</p>
+      <pre>HEAD /apparaat/woonkamer</pre>
+      <p data-i18n="settings.examples.head3">Check whether the API is reachable.</p>
+      <pre>HEAD /status</pre>
+    </div>
+    <div class="request-example">
+      <h3>OPTIONS</h3>
+      <p data-i18n="settings.examples.options1">Ask which HTTP methods are available for a route.</p>
+      <pre>OPTIONS /informatie</pre>
+      <p data-i18n="settings.examples.options2">Check the CORS preflight response.</p>
+      <pre>OPTIONS /apparaat</pre>
+      <p data-i18n="settings.examples.options3">Inspect the allowed methods before integrating a client.</p>
+      <pre>OPTIONS /api</pre>
+    </div>
+    <p data-i18n="settings.examples.tokenNote">When authentication is enabled, add ?token=abc to the URL or use Authorization: Bearer abc. POST, PUT, and PATCH bodies must contain valid JSON.</p>
+    </div>
+    </details>
+  </div>
+</section>
+
+<script type="text/javascript">
+  function onHomeyReady(Homey) {
+    // Identify the elements we need to interact with
+    const portInput = document.getElementById('server-port');
+    const corsSelect = document.getElementById('cors-enabled');
+    const saveButton = document.getElementById('save');
+    const emailSaveButton = document.getElementById('email-save');
+    const emailTestButton = document.getElementById('email-test');
+    const emailTestStatus = document.getElementById('email-test-status');
+    const emailDailyUsage = document.getElementById('email-daily-usage');
+    const gmailAddressInput = document.getElementById('gmail-address');
+    const gmailAppPasswordInput = document.getElementById('gmail-app-password');
+    const clearGmailAppPasswordCheckbox = document.getElementById('clear-gmail-app-password');
+    const additionalCorsSettings = document.getElementById('additional-cors-settings');
+    const corsAcaoInput = document.getElementById('cors-acao');
+    const saveConfirmation = document.getElementById('save-confirmation');
+    const emailSaveConfirmation = document.getElementById('email-save-confirmation');
+    const authEnabledSelect = document.getElementById('auth-enabled');
+    const apiTokenInput = document.getElementById('api-token');
+    const toggleTokenButton = document.getElementById('toggle-token');
+    const generateTokenButton = document.getElementById('generate-token');
+    const browserPasswordInput = document.getElementById('browser-password');
+    const browserUsernameInput = document.getElementById('browser-username');
+    const browserPasswordSave = document.getElementById('browser-password-save');
+    const browserPasswordDisable = document.getElementById('browser-password-disable');
+    const browserPasswordStatus = document.getElementById('browser-password-status');
+    const countdownTab = document.getElementById('countdown-tab');
+    const virtualTab = document.getElementById('virtual-tab');
+    const emailTab = document.getElementById('email-tab');
+    const icalTab = document.getElementById('ical-tab');
+    const apiTab = document.getElementById('api-tab');
+    const informationTab = document.getElementById('information-tab');
+    const webhookTab = document.getElementById('webhook-tab');
+    const countdownPanel = document.getElementById('countdown-panel');
+    const virtualPanel = document.getElementById('virtual-panel');
+    const emailPanel = document.getElementById('email-panel');
+    const icalPanel = document.getElementById('ical-panel');
+    const apiPanel = document.getElementById('api-panel');
+    const informationPanel = document.getElementById('information-panel');
+    const webhookPanel = document.getElementById('webhook-panel');
+    const webhookList = document.getElementById('webhook-list');
+    const webhookEmpty = document.getElementById('webhook-empty');
+    const webhookName = document.getElementById('webhook-name');
+    const webhookUrl = document.getElementById('webhook-url');
+    const webhookMethod = document.getElementById('webhook-method');
+    const webhookHeaders = document.getElementById('webhook-headers');
+    const webhookBody = document.getElementById('webhook-body');
+    const webhookSave = document.getElementById('webhook-save');
+    const webhookCancel = document.getElementById('webhook-cancel');
+    const webhookMessage = document.getElementById('webhook-message');
+    const statusResults = document.getElementById('status-results');
+    const statusMessage = document.getElementById('status-message');
+    const statusRefresh = document.getElementById('status-refresh');
+    const icalCalendarsList = document.getElementById('ical-calendars');
+    const icalNameInput = document.getElementById('ical-name');
+    const icalUrlInput = document.getElementById('ical-url');
+    const icalAddButton = document.getElementById('ical-add');
+    const icalAutoSyncInput = document.getElementById('ical-auto-sync');
+    const icalSyncIntervalInput = document.getElementById('ical-sync-interval');
+    const icalSyncDaysInput = document.getElementById('ical-sync-days');
+    const icalSaveButton = document.getElementById('ical-save');
+    const icalSyncButton = document.getElementById('ical-sync');
+    const icalSaveStatus = document.getElementById('ical-save-status');
+    const countdownNameInput = document.getElementById('countdown-name');
+    const countdownTimersList = document.getElementById('countdown-timers');
+    const countdownAddButton = document.getElementById('countdown-add');
+    const countdownExportButton = document.getElementById('countdown-export');
+    const countdownImportInput = document.getElementById('countdown-import');
+    const countdownMessage = document.getElementById('countdown-message');
+    const activeCountdownsList = document.getElementById('active-countdowns');
+    const activeCountdownsEmpty = document.getElementById('active-countdowns-empty');
+    const settingsPanels = [apiPanel, emailPanel, icalPanel, countdownPanel, webhookPanel];
+    const icalStatusText = (key, fallback) => (
+      typeof Homey.__ === 'function' ? Homey.__(`settings.ical.${key}`) : fallback
+    );
+    const showIcalStatus = (message, isError = false) => {
+      icalSaveStatus.style.display = 'block';
+      icalSaveStatus.style.color = isError ? 'red' : 'green';
+      icalSaveStatus.style.whiteSpace = 'pre-line';
+      icalSaveStatus.textContent = message;
+    };
+    const validateICalCalendars = (calendars) => {
+      if (!Array.isArray(calendars)) {
+        throw new Error(icalStatusText('invalidCalendars', 'Calendar list is invalid.'));
+      }
+      const normalized = calendars.map((calendar) => {
+        if (!calendar || typeof calendar.name !== 'string' || typeof calendar.url !== 'string') {
+          throw new Error(icalStatusText('invalidCalendars', 'Calendar list is invalid.'));
+        }
+        const name = calendar.name.trim();
+        const url = calendar.url.trim();
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(url);
+        } catch (error) {
+          throw new Error(icalStatusText('invalidUrl', 'Enter a valid calendar URL.'));
+        }
+        if (!name || name.length > 80 || !['http:', 'https:'].includes(parsedUrl.protocol)) {
+          throw new Error(icalStatusText('invalidCalendar', 'Calendar name or URL is invalid.'));
+        }
+        return { name, url };
+      });
+      if (new Set(normalized.map((calendar) => calendar.name.toLowerCase())).size !== normalized.length) {
+        throw new Error(icalStatusText('duplicateName', 'Calendar names must be unique.'));
+      }
+      return normalized;
+    };
+    const renderICalCalendars = () => {
+      icalCalendarsList.replaceChildren();
+      icalCalendars.forEach((calendar, index) => {
+        const item = document.createElement('li');
+        item.className = 'countdown-timer';
+        const fields = document.createElement('div');
+        fields.className = 'ical-calendar-fields';
+        const name = document.createElement('input');
+        name.className = 'homey-form-input';
+        name.type = 'text';
+        name.maxLength = 80;
+        name.value = calendar.name;
+        name.disabled = !settingsReady;
+        name.setAttribute('aria-label', icalStatusText('namePlaceholder', 'Calendar name'));
+        name.addEventListener('input', () => {
+          icalCalendars[index].name = name.value;
+        });
+        const url = document.createElement('input');
+        url.className = 'homey-form-input';
+        url.type = 'url';
+        url.value = calendar.url;
+        url.disabled = !settingsReady;
+        url.setAttribute('aria-label', icalStatusText('urlPlaceholder', 'Calendar URL'));
+        url.addEventListener('input', () => {
+          icalCalendars[index].url = url.value;
+        });
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'homey-button-secondary';
+        remove.textContent = icalStatusText('remove', 'Remove');
+        remove.disabled = !settingsReady;
+        remove.addEventListener('click', () => {
+          icalCalendars.splice(index, 1);
+          renderICalCalendars();
+        });
+        fields.append(name, url);
+        item.append(fields, remove);
+        icalCalendarsList.appendChild(item);
+      });
+    };
+    let countdownNames = [];
+    let countdownDurations = {};
+    let icalCalendars = [];
+    let webhooks = [];
+    let editingWebhookId = null;
+    let webhookBusy = false;
+    let saveConfirmationTimeout;
+    let activeCountdownRefreshPending = false;
+    let settingsReady = false;
+    const pendingSettings = new Set([
+      'serverPort',
+      'browserSettingsUsername',
+      'corsStatus',
+      'corsAcao',
+      'authEnabled',
+      'apiToken',
+      'gmailAddress',
+      'webhooks',
+      'icalCalendars',
+      'icalAutoSync',
+      'icalSyncInterval',
+      'icalSyncDays',
+      'countdownTimerDurations',
+      'countdownTimerNames',
+    ]);
+    const settingsLoadErrors = [];
+
+    const setSettingsDisabled = (disabled) => {
+      settingsPanels.forEach((panel) => {
+        panel.querySelectorAll('input, select, textarea, button').forEach((control) => {
+          control.disabled = disabled;
+        });
+      });
+    };
+    const finishSettingsLoad = (key, error) => {
+      if (error) {
+        settingsLoadErrors.push(error);
+        console.error(`Could not load saved setting "${key}":`, error);
+      }
+      pendingSettings.delete(key);
+      if (pendingSettings.size !== 0) {
+        return;
+      }
+      if (settingsLoadErrors.length > 0) {
+        Homey.alert(Homey.__('settings.loadFailed'));
+        return;
+      }
+      settingsReady = true;
+      setSettingsDisabled(false);
+    };
+    const loadSetting = (key, applyValue) => {
+      Homey.get(key, (err, value) => {
+        if (err) {
+          finishSettingsLoad(key, err);
+          return;
+        }
+        try {
+          applyValue(value);
+          finishSettingsLoad(key);
+        } catch (error) {
+          finishSettingsLoad(key, error);
+        }
+      });
+    };
+    setSettingsDisabled(true);
+    const updateBrowserPassword = (password) => {
+      browserPasswordSave.disabled = true;
+      browserPasswordDisable.disabled = true;
+      Homey.api('POST', '/browser-password', { username: browserUsernameInput.value, password }, (error) => {
+        browserPasswordSave.disabled = false;
+        browserPasswordDisable.disabled = false;
+        browserPasswordStatus.style.color = error ? 'red' : 'green';
+        browserPasswordStatus.textContent = error
+          ? `${Homey.__('settings.browser.failed')} ${error.message || error}`
+          : Homey.__(password ? 'settings.browser.saved' : 'settings.browser.disabled');
+        if (!error) browserPasswordInput.value = '';
+      });
+    };
+    browserPasswordSave.addEventListener('click', () => {
+      if (!browserUsernameInput.value.trim() || browserUsernameInput.value !== browserUsernameInput.value.trim()
+        || browserUsernameInput.value.length > 64 || /[:\x00-\x1f\x7f]/.test(browserUsernameInput.value)) {
+        browserPasswordStatus.style.color = 'red';
+        browserPasswordStatus.textContent = Homey.__('settings.browser.invalidUsername');
+        return;
+      }
+      if (browserPasswordInput.value.length < 6) {
+        browserPasswordStatus.style.color = 'red';
+        browserPasswordStatus.textContent = Homey.__('settings.browser.invalid');
+        return;
+      }
+      updateBrowserPassword(browserPasswordInput.value);
+    });
+    browserPasswordDisable.addEventListener('click', () => updateBrowserPassword(''));
+
+    const showSaveConfirmation = () => {
+      saveConfirmation.style.display = 'block';
+      clearTimeout(saveConfirmationTimeout);
+      saveConfirmationTimeout = setTimeout(() => {
+        saveConfirmation.style.display = 'none';
+      }, 3000);
+    };
+
+    const showEmailSaveConfirmation = () => {
+      emailSaveConfirmation.style.display = 'block';
+      clearTimeout(saveConfirmationTimeout);
+      saveConfirmationTimeout = setTimeout(() => {
+        emailSaveConfirmation.style.display = 'none';
+      }, 3000);
+    };
+
+    const updateEmailDailyUsage = () => {
+      Homey.get('emailDailyUsage', (error, usage) => {
+        if (error) {
+          emailDailyUsage.textContent = `${Homey.__('settings.email.dailyUsageFailed')} ${error.message || error}`;
+          emailDailyUsage.style.color = 'red';
+          console.error('Could not load daily email usage:', error);
+          return;
+        }
+        if (
+          usage !== undefined
+          && usage !== null
+          && (
+            typeof usage !== 'object'
+            || typeof usage.date !== 'string'
+            || !Number.isSafeInteger(usage.count)
+            || usage.count < 0
+          )
+        ) {
+          emailDailyUsage.textContent = Homey.__('settings.email.dailyUsageFailed');
+          emailDailyUsage.style.color = 'red';
+          console.error('Saved daily email usage is invalid.');
+          return;
+        }
+        const now = new Date();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const today = `${now.getFullYear()}-${month}-${day}`;
+        const count = usage && usage.date === today ? usage.count : 0;
+        emailDailyUsage.textContent = Homey.__('settings.email.dailyUsage')
+          .replace('{count}', String(count))
+          .replace('{limit}', '500');
+        emailDailyUsage.style.color = count >= 500 ? 'red' : 'green';
+      });
+    };
+
+    // Wrap Homey.set in a Promise so we can wait for all settings to be saved
+    const setSetting = (key, value) => new Promise((resolve, reject) => {
+      if (!settingsReady) {
+        reject(new Error('Saved settings are not fully loaded. Reload the settings page before making changes.'));
+        return;
+      }
+      Homey.set(key, value, (err) => {
+        if (err) return reject(err);
+        return resolve();
+      });
+    });
+    const webhookText = (key) => Homey.__(`settings.webhooks.${key}`);
+    const showWebhookMessage = (message, isError = false) => {
+      webhookMessage.textContent = message;
+      webhookMessage.style.color = isError ? '#b00020' : 'green';
+    };
+    const validateWebhooks = (items) => {
+      if (!Array.isArray(items) || items.length > 50
+        || new TextEncoder().encode(JSON.stringify(items)).length > 512 * 1024) {
+        throw new Error(webhookText('invalidList'));
+      }
+      const ids = new Set();
+      const names = new Set();
+      items.forEach((item) => {
+        if (!item || typeof item.id !== 'string' || !/^[a-f0-9]{32}$/.test(item.id)
+          || typeof item.name !== 'string' || !item.name.trim() || item.name !== item.name.trim() || item.name.length > 80
+          || typeof item.url !== 'string' || item.url !== item.url.trim() || item.url.length > 4096
+          || !['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].includes(item.method)
+          || typeof item.headers !== 'string' || new TextEncoder().encode(item.headers).length > 16384
+          || typeof item.body !== 'string' || new TextEncoder().encode(item.body).length > 65536) {
+          throw new Error(webhookText('invalidFields'));
+        }
+        let url;
+        let headers;
+        try {
+          url = new URL(item.url);
+          headers = item.headers.trim() ? JSON.parse(item.headers) : {};
+        } catch (error) {
+          throw new Error(webhookText('invalidFields'));
+        }
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password
+          || !headers || typeof headers !== 'object' || Array.isArray(headers)
+          || !Object.entries(headers).every(([name, value]) => typeof value === 'string'
+            && /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/.test(name) && !/[^\t\x20-\x7e\x80-\xff]/.test(value))) {
+          throw new Error(webhookText('invalidFields'));
+        }
+        const name = item.name.toLowerCase();
+        if (ids.has(item.id) || names.has(name)) throw new Error(webhookText('duplicate'));
+        ids.add(item.id);
+        names.add(name);
+      });
+      return items;
+    };
+    const clearWebhookForm = () => {
+      editingWebhookId = null;
+      webhookName.value = '';
+      webhookUrl.value = '';
+      webhookMethod.value = 'GET';
+      webhookHeaders.value = '';
+      webhookBody.value = '';
+    };
+    const renderWebhooks = () => {
+      webhookList.replaceChildren();
+      webhookEmpty.hidden = webhooks.length !== 0;
+      webhooks.forEach((webhook) => {
+        const item = document.createElement('li');
+        item.className = 'countdown-timer';
+        const label = document.createElement('span');
+        label.textContent = `${webhook.name} (${webhook.method})`;
+        const buttons = document.createElement('div');
+        buttons.className = 'countdown-controls';
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.textContent = webhookText('edit');
+        edit.disabled = !settingsReady || webhookBusy;
+        edit.addEventListener('click', () => {
+          editingWebhookId = webhook.id;
+          webhookName.value = webhook.name;
+          webhookUrl.value = webhook.url;
+          webhookMethod.value = webhook.method;
+          webhookHeaders.value = webhook.headers;
+          webhookBody.value = webhook.body;
+          showWebhookMessage(webhookText('editing').replace('{name}', webhook.name));
+          webhookName.focus();
+        });
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = webhookText('remove');
+        remove.disabled = !settingsReady || webhookBusy;
+        remove.addEventListener('click', () => {
+          if (!window.confirm(webhookText('confirmRemove').replace('{name}', webhook.name))) return;
+          saveWebhooks(webhooks.filter((entry) => entry.id !== webhook.id), () => {
+            if (editingWebhookId === webhook.id) clearWebhookForm();
+          });
+        });
+        buttons.append(edit, remove);
+        item.append(label, buttons);
+        webhookList.appendChild(item);
+      });
+    };
+    const saveWebhooks = (next, onSuccess) => {
+      if (webhookBusy) return;
+      try {
+        validateWebhooks(next);
+      } catch (error) {
+        showWebhookMessage(error.message || String(error), true);
+        return;
+      }
+      webhookBusy = true;
+      webhookPanel.querySelectorAll('input, select, textarea, button').forEach((control) => { control.disabled = true; });
+      setSetting('webhooks', next).then(() => {
+        webhooks = next;
+        onSuccess();
+        showWebhookMessage(webhookText('saved'));
+      }).catch((error) => {
+        showWebhookMessage(`${webhookText('saveFailed')} ${error.message || error}`, true);
+      }).finally(() => {
+        webhookBusy = false;
+        webhookPanel.querySelectorAll('input, select, textarea, button').forEach((control) => { control.disabled = !settingsReady; });
+        renderWebhooks();
+      });
+    };
+    webhookSave.addEventListener('click', () => {
+      const bytes = new Uint8Array(16);
+      if (!editingWebhookId) crypto.getRandomValues(bytes);
+      const id = editingWebhookId || Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+      const webhook = {
+        id,
+        name: webhookName.value.trim(),
+        url: webhookUrl.value.trim(),
+        method: webhookMethod.value,
+        headers: webhookHeaders.value,
+        body: webhookBody.value,
+      };
+      const next = editingWebhookId
+        ? webhooks.map((entry) => (entry.id === editingWebhookId ? webhook : entry))
+        : [...webhooks, webhook];
+      saveWebhooks(next, clearWebhookForm);
+    });
+    webhookCancel.addEventListener('click', () => {
+      clearWebhookForm();
+      webhookMessage.textContent = '';
+    });
+    let logoClicks = 0;
+    let easterEggTimeout;
+    document.getElementById('brand-logo').addEventListener('click', () => {
+      logoClicks += 1;
+      if (logoClicks < 5) return;
+      logoClicks = 0;
+      const egg = document.getElementById('easter-egg');
+      egg.textContent = `🏠 ${Homey.__('settings.easterEgg')}`;
+      egg.hidden = false;
+      clearTimeout(easterEggTimeout);
+      easterEggTimeout = setTimeout(() => { egg.hidden = true; }, 8000);
+    });
+    // Display additional CORS settings when CORS is enabled
+    const displayCorsSettings = () => {
+      if (corsSelect.value === 'true') {
+        additionalCorsSettings.style.display = 'block';
+      } else {
+        additionalCorsSettings.style.display = 'none';
+      }
+    };
+    corsSelect.addEventListener('change', () => {
+      displayCorsSettings();
+    });
+    // Retrieve information from the Homey API
+    loadSetting('serverPort', (port) => {
+      portInput.value = port || '3000';
+    });
+    loadSetting('browserSettingsUsername', (username) => {
+      browserUsernameInput.value = username;
+    });
+    loadSetting('corsStatus', (cors) => {
+      corsSelect.value = cors || 'true';
+    });
+    loadSetting('corsAcao', (corsAcao) => {
+      corsAcaoInput.value = corsAcao || '*';
+    });
+    loadSetting('authEnabled', (enabled) => {
+      authEnabledSelect.value = enabled || 'false';
+    });
+    loadSetting('apiToken', (token) => {
+      apiTokenInput.value = token || '';
+    });
+    loadSetting('gmailAddress', (address) => {
+      gmailAddressInput.value = address || '';
+    });
+    loadSetting('webhooks', (saved) => {
+      webhooks = validateWebhooks(saved === null || saved === undefined ? [] : saved);
+      renderWebhooks();
+    });
+    loadSetting('icalCalendars', (calendars) => {
+      icalCalendars = validateICalCalendars(calendars || []);
+      renderICalCalendars();
+    });
+    loadSetting('icalAutoSync', (enabled) => {
+      if (enabled !== null && enabled !== undefined && typeof enabled !== 'boolean') {
+        throw new Error('Invalid automatic calendar synchronization setting.');
+      }
+      icalAutoSyncInput.checked = enabled !== false;
+    });
+    loadSetting('icalSyncInterval', (minutes) => {
+      icalSyncIntervalInput.value = minutes || '15';
+    });
+    loadSetting('icalSyncDays', (days) => {
+      icalSyncDaysInput.value = days || '30';
+    });
+    generateTokenButton.addEventListener('click', () => {
+      const bytes = new Uint8Array(32);
+      crypto.getRandomValues(bytes);
+      apiTokenInput.value = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+      authEnabledSelect.value = 'true';
+    });
+    toggleTokenButton.addEventListener('click', () => {
+      const isHidden = apiTokenInput.type === 'password';
+      apiTokenInput.type = isHidden ? 'text' : 'password';
+      toggleTokenButton.textContent = isHidden ? 'Hide' : 'Show';
+    });
+    const showPanel = (panel, selectedTab) => {
+      [apiPanel, emailPanel, icalPanel, countdownPanel, virtualPanel, informationPanel, webhookPanel].forEach((currentPanel) => {
+        currentPanel.hidden = currentPanel !== panel;
+      });
+      [apiTab, emailTab, icalTab, countdownTab, virtualTab, informationTab, webhookTab].forEach((currentTab) => {
+        const isSelected = currentTab === selectedTab;
+        currentTab.classList.toggle('active', isSelected);
+        currentTab.setAttribute('aria-selected', String(isSelected));
+      });
+    };
+    countdownTab.addEventListener('click', () => showPanel(countdownPanel, countdownTab));
+    emailTab.addEventListener('click', () => showPanel(emailPanel, emailTab));
+    icalTab.addEventListener('click', () => showPanel(icalPanel, icalTab));
+    virtualTab.addEventListener('click', () => showPanel(virtualPanel, virtualTab));
+    apiTab.addEventListener('click', () => showPanel(apiPanel, apiTab));
+    webhookTab.addEventListener('click', () => showPanel(webhookPanel, webhookTab));
+    informationTab.addEventListener('click', () => showPanel(informationPanel, informationTab));
+    const refreshStatus = () => {
+      if (statusRefresh.disabled) return;
+      statusRefresh.disabled = true;
+      Homey.api('POST', '/status', {}, (error, result) => {
+        statusRefresh.disabled = false;
+        if (error) {
+          statusResults.replaceChildren();
+          statusMessage.textContent = `${Homey.__('settings.status.failed')} ${error.message || error}`;
+          return;
+        }
+        statusMessage.textContent = '';
+        statusResults.replaceChildren();
+        const t = (key) => Homey.__(`settings.status.${key}`);
+        const add = (label, active, status, detail, failure) => {
+          const chip = document.createElement('span');
+          chip.className = `status-chip ${active ? 'ok' : 'idle'}`;
+          chip.textContent = `${label}: ${status}`;
+          chip.title = detail;
+          if (failure) {
+            const warning = document.createElement('span');
+            warning.className = 'status-detail';
+            warning.textContent = ` — ${t('error')}`;
+            chip.append(warning);
+          }
+          statusResults.append(chip);
+        };
+        const lastResult = (entry) => entry
+          ? `${t(entry.success ? 'success' : 'error')} — ${new Date(entry.time).toLocaleString()}${entry.error ? ` — ${entry.error}` : ''}`
+          : t('notYet');
+        const configuredStatus = (configured) => t(configured ? 'configured' : 'notConfigured');
+        add('API', result.api.listening, t(result.api.listening ? 'running' : 'notRunning'),
+          result.api.error || '', Boolean(result.api.error));
+        const sync = result.calendars.lastSync;
+        const syncStatus = sync
+          ? `${t(sync.failures.length ? 'error' : 'success')} — ${new Date(sync.time).toLocaleString()}${sync.failures.length ? ` — ${sync.failures.map((failure) => `${failure.calendar}: ${failure.error}`).join('; ')}` : ''}`
+          : t('notYet');
+        const calendarsConfigured = result.calendars.configured > 0;
+        add(t('calendarLabel'), calendarsConfigured, configuredStatus(calendarsConfigured),
+          `${result.calendars.configured} — ${result.calendars.syncing ? t('syncing') : syncStatus}`,
+          !result.calendars.syncing && Boolean(sync && sync.failures.length));
+        add(t('email'), result.email.configured, configuredStatus(result.email.configured),
+          lastResult(result.email.lastResult), Boolean(result.email.lastResult && !result.email.lastResult.success));
+        const webhooksConfigured = result.webhook.configured > 0;
+        add(t('savedWebhooks'), webhooksConfigured, configuredStatus(webhooksConfigured),
+          lastResult(result.webhook.lastResult), Boolean(result.webhook.lastResult && !result.webhook.lastResult.success));
+      });
+    };
+    statusRefresh.addEventListener('click', refreshStatus);
+    refreshStatus();
+    setInterval(refreshStatus, 30000);
+    const saveSettings = (showConfirmation) => {
+      Promise.all([
+        setSetting('serverPort', portInput.value),
+        setSetting('corsStatus', corsSelect.value),
+        setSetting('corsAcao', corsAcaoInput.value),
+        setSetting('authEnabled', authEnabledSelect.value),
+        ...(apiTokenInput.value.trim() ? [setSetting('apiToken', apiTokenInput.value)] : []),
+      ])
+        .then(showConfirmation)
+        .catch((err) => Homey.alert(err));
+    };
+    // Add event listeners
+    saveButton.addEventListener('click', () => saveSettings(showSaveConfirmation));
+    emailSaveButton.addEventListener('click', () => {
+      const gmailAddress = gmailAddressInput.value.trim();
+      if (!gmailAddress) {
+        Homey.alert(Homey.__('settings.email.addressRequired'));
+        return;
+      }
+
+      const password = gmailAppPasswordInput.value.trim();
+      const updates = [setSetting('gmailAddress', gmailAddress)];
+      if (password) {
+        updates.push(setSetting('gmailAppPassword', password));
+      } else if (clearGmailAppPasswordCheckbox.checked) {
+        updates.push(setSetting('gmailAppPassword', ''));
+      }
+      Promise.all(updates)
+        .then(() => {
+          gmailAppPasswordInput.value = '';
+          clearGmailAppPasswordCheckbox.checked = false;
+          showEmailSaveConfirmation();
+        })
+        .catch((err) => Homey.alert(err));
+    });
+    emailTestButton.addEventListener('click', () => {
+      emailTestButton.disabled = true;
+      emailTestStatus.style.display = 'block';
+      emailTestStatus.style.color = '';
+      emailTestStatus.textContent = Homey.__('settings.email.testSending');
+      Homey.api('POST', '/test-email', {}, (err) => {
+        emailTestButton.disabled = false;
+        if (err) {
+          emailTestStatus.style.color = 'red';
+          const emailError = err.message || String(err);
+          const localizedError = emailError.includes('daily limit')
+            ? Homey.__('settings.email.limitReached')
+            : (emailError.includes('no more than 500 recipients')
+              ? Homey.__('settings.email.recipientLimit')
+              : emailError);
+          emailTestStatus.textContent = `${Homey.__('settings.email.testFailed')} ${localizedError}`;
+          updateEmailDailyUsage();
+          return;
+        }
+        emailTestStatus.style.color = 'green';
+        emailTestStatus.textContent = Homey.__('settings.email.testSuccess');
+        updateEmailDailyUsage();
+      });
+    });
+    updateEmailDailyUsage();
+    setInterval(updateEmailDailyUsage, 15000);
+    icalAddButton.addEventListener('click', () => {
+      try {
+        icalCalendars = validateICalCalendars([
+          ...icalCalendars,
+          { name: icalNameInput.value, url: icalUrlInput.value },
+        ]);
+        icalNameInput.value = '';
+        icalUrlInput.value = '';
+        renderICalCalendars();
+        icalSaveStatus.style.display = 'none';
+      } catch (error) {
+        showIcalStatus(error.message || String(error), true);
+      }
+    });
+    icalSaveButton.addEventListener('click', () => {
+      let calendars;
+      const interval = Number(icalSyncIntervalInput.value);
+      const days = Number(icalSyncDaysInput.value);
+      try {
+        calendars = validateICalCalendars(icalCalendars);
+        if (!Number.isSafeInteger(interval) || interval < 5 || interval > 1440) {
+          throw new Error(icalStatusText('invalidInterval', 'Sync interval must be between 5 and 1,440 minutes.'));
+        }
+        if (!Number.isSafeInteger(days) || days < 1 || days > 365) {
+          throw new Error(icalStatusText('invalidDays', 'Sync timeframe must be between 1 and 365 days.'));
+        }
+      } catch (error) {
+        showIcalStatus(error.message || String(error), true);
+        return;
+      }
+      const autoSync = icalAutoSyncInput.checked;
+      (autoSync ? Promise.resolve() : setSetting('icalAutoSync', false))
+        .then(() => Promise.all([
+          setSetting('icalCalendars', calendars),
+          setSetting('icalSyncInterval', interval),
+          setSetting('icalSyncDays', days),
+        ]))
+        .then(() => (autoSync ? setSetting('icalAutoSync', true) : undefined))
+        .then(() => {
+          icalCalendars = calendars;
+          showIcalStatus(icalStatusText('saved', 'iCal settings saved.'));
+        })
+        .catch((error) => showIcalStatus(error.message || String(error), true));
+    });
+    const icalEventsBody = document.getElementById('ical-events');
+    const icalEventsEmpty = document.getElementById('ical-events-empty');
+    const icalEventsNoMatches = document.getElementById('ical-events-no-matches');
+    const icalEventsError = document.getElementById('ical-events-error');
+    const icalEventsSearch = document.getElementById('ical-events-search');
+    let displayedICalEvents = [];
+    const renderICalEvents = () => {
+      const query = icalEventsSearch.value.trim().toLocaleLowerCase();
+      const events = displayedICalEvents.filter((event) => (
+        [event.title, event.calendar, event.location].some((value) => (
+          typeof value === 'string' && value.toLocaleLowerCase().includes(query)
+        ))
+      ));
+      const now = Date.now();
+      icalEventsBody.replaceChildren();
+      events.forEach((event) => {
+        const row = document.createElement('tr');
+        row.classList.toggle('event-active', event.start <= now && event.end > now);
+        [
+          [new Date(event.start).toLocaleString(), 'event-date'],
+          [new Date(event.end).toLocaleString(), 'event-date'],
+          [event.title, ''],
+          [event.calendar, ''],
+          [event.location || '', ''],
+        ].forEach(([text, className]) => {
+          const cell = document.createElement('td');
+          cell.textContent = text;
+          if (className) cell.className = className;
+          row.appendChild(cell);
+        });
+        icalEventsBody.appendChild(row);
+      });
+      icalEventsEmpty.hidden = displayedICalEvents.length > 0;
+      icalEventsNoMatches.hidden = displayedICalEvents.length === 0 || events.length > 0;
+    };
+    const loadICalEvents = () => {
+      Homey.api('POST', '/calendar-events', {}, (error, result) => {
+        if (error || !result || !Array.isArray(result.events)) {
+          icalEventsError.textContent = `${Homey.__('settings.ical.eventsFailed')} ${error ? (error.message || error) : ''}`;
+          return;
+        }
+        icalEventsError.textContent = '';
+        displayedICalEvents = result.events;
+        renderICalEvents();
+      });
+    };
+    icalEventsSearch.addEventListener('input', renderICalEvents);
+    icalTab.addEventListener('click', loadICalEvents);
+    loadICalEvents();
+    icalSyncButton.addEventListener('click', () => {
+      icalSyncButton.disabled = true;
+      showIcalStatus(icalStatusText('syncing', 'Synchronizing calendars...'));
+      Homey.api('POST', '/sync-calendars', {}, (err, result) => {
+        icalSyncButton.disabled = false;
+        loadICalEvents();
+        if (err) {
+          showIcalStatus(`${icalStatusText('syncFailed', 'Calendar synchronization failed:')} ${err.message || err}`, true);
+          return;
+        }
+        const added = result && Array.isArray(result.added) ? result.added : [];
+        const changed = result && Array.isArray(result.changed) ? result.changed : [];
+        const failed = result && Array.isArray(result.failedCalendars) ? result.failedCalendars : [];
+        const changes = [];
+        const formatChanges = (events) => events
+          .map((event) => `${event.calendar}: ${event.title} (${new Date(event.start).toLocaleString()})`)
+          .join(', ');
+        if (added.length > 0) {
+          changes.push(
+            `${icalStatusText('syncAdded', 'New ({count}):').replace('{count}', String(added.length))} ${formatChanges(added)}`,
+          );
+        }
+        if (changed.length > 0) {
+          changes.push(
+            `${icalStatusText('syncChanged', 'Changed ({count}):').replace('{count}', String(changed.length))} ${formatChanges(changed)}`,
+          );
+        }
+        const changeSummary = changes.length > 0
+          ? changes.join('\n')
+          : icalStatusText('syncNoChanges', 'No new or changed events.');
+        if (failed.length > 0) {
+          const failures = result && Array.isArray(result.failures) ? result.failures : [];
+          const failureDetails = failures
+            .map((failure) => `${failure.calendar}: ${failure.error}`)
+            .join('\n');
+          showIcalStatus(
+            `${icalStatusText('syncPartial', 'Synchronization finished with errors.')}\n${changeSummary}\n${failureDetails || failed.join(', ')}`,
+            true,
+          );
+          return;
+        }
+        showIcalStatus(`${icalStatusText('syncSuccess', 'Synchronization complete.')}\n${changeSummary}`);
+      });
+    });
+    const countdownText = (key, fallback) => (
+      typeof Homey.__ === 'function' ? Homey.__(`settings.countdown.${key}`) : fallback
+    );
+    const renderActiveCountdowns = (states) => {
+      if (!Array.isArray(states)) {
+        throw new Error(countdownText('activeLoadFailed', 'Could not load active countdown timers.'));
+      }
+      const now = Date.now();
+      const activeTimers = states.filter((timer) => (
+        timer
+        && typeof timer.name === 'string'
+        && typeof timer.expiresAt === 'number'
+        && Number.isFinite(timer.expiresAt)
+        && timer.paused === false
+        && timer.expiresAt > now
+      ));
+      const activeNames = activeTimers.map((timer) => timer.name);
+      const renderedNames = Array.from(activeCountdownsList.children)
+        .map((item) => item.dataset.timerName);
+      if (activeNames.length !== renderedNames.length
+        || activeNames.some((name, index) => name !== renderedNames[index])) {
+        activeCountdownsList.replaceChildren();
+        activeTimers.forEach((timer) => {
+          const item = document.createElement('li');
+          item.className = 'active-countdown';
+          item.dataset.timerName = timer.name;
+          const name = document.createElement('span');
+          name.textContent = timer.name;
+          const controls = document.createElement('div');
+          controls.className = 'active-countdown-controls';
+          const remaining = document.createElement('span');
+          remaining.dataset.role = 'remaining';
+          const secondsInput = document.createElement('input');
+          secondsInput.className = 'homey-form-input';
+          secondsInput.type = 'number';
+          secondsInput.min = '0';
+          secondsInput.max = '8640000000000';
+          secondsInput.step = '1';
+          secondsInput.setAttribute(
+            'aria-label',
+            countdownText('adjustRemaining', 'Set remaining seconds for {timer}').replace('{timer}', timer.name),
+          );
+          secondsInput.addEventListener('input', () => {
+            secondsInput.dataset.dirty = 'true';
+          });
+          const updateButton = document.createElement('button');
+          updateButton.type = 'button';
+          updateButton.className = 'homey-button-secondary';
+          updateButton.textContent = countdownText('adjust', 'Update');
+          updateButton.addEventListener('click', () => {
+            const seconds = Number(secondsInput.value);
+            if (!Number.isSafeInteger(seconds) || seconds < 0 || seconds > 8640000000000) {
+              showCountdownMessage(
+                countdownText('invalidRemaining', 'Remaining time must be a whole number of seconds, zero or more.'),
+                true,
+              );
+              return;
+            }
+            secondsInput.disabled = true;
+            updateButton.disabled = true;
+            Homey.api('POST', '/countdown-remaining', { name: timer.name, seconds }, (error) => {
+              secondsInput.disabled = false;
+              updateButton.disabled = false;
+              if (error) {
+                showCountdownMessage(
+                  `${countdownText('adjustFailed', 'Could not update the running timer:')} ${error.message || error}`,
+                  true,
+                );
+                refreshActiveCountdowns();
+                return;
+              }
+              secondsInput.dataset.dirty = 'false';
+              showCountdownMessage(countdownText('adjusted', 'Remaining timer time updated.'));
+              refreshActiveCountdowns();
+            });
+          });
+          controls.append(remaining, secondsInput, updateButton);
+          item.append(name, controls);
+          activeCountdownsList.append(item);
+        });
+      }
+      activeTimers.forEach((timer, index) => {
+        const item = activeCountdownsList.children[index];
+        const remainingSeconds = Math.ceil((timer.expiresAt - now) / 1000);
+        item.querySelector('[data-role="remaining"]').textContent = countdownText(
+          'remaining',
+          'Remaining: {seconds} seconds',
+        ).replace('{seconds}', String(remainingSeconds));
+        const secondsInput = item.querySelector('input');
+        if (secondsInput.dataset.dirty !== 'true' && document.activeElement !== secondsInput) {
+          secondsInput.value = String(remainingSeconds);
+        }
+      });
+      activeCountdownsEmpty.hidden = activeTimers.length > 0;
+    };
+    const refreshActiveCountdowns = () => {
+      if (activeCountdownRefreshPending) {
+        return;
+      }
+      activeCountdownRefreshPending = true;
+      Homey.get('countdownTimerStates', (err, states) => {
+        activeCountdownRefreshPending = false;
+        if (err) {
+          activeCountdownsList.replaceChildren();
+          activeCountdownsEmpty.hidden = false;
+          activeCountdownsEmpty.textContent = countdownText(
+            'activeLoadFailed',
+            'Could not load active countdown timers.',
+          );
+          console.error(err);
+          return;
+        }
+        try {
+          renderActiveCountdowns(states || []);
+          activeCountdownsEmpty.textContent = countdownText(
+            'activeEmpty',
+            'No active countdown timers.',
+          );
+        } catch (error) {
+          activeCountdownsList.replaceChildren();
+          activeCountdownsEmpty.hidden = false;
+          activeCountdownsEmpty.textContent = error.message || String(error);
+          console.error(error);
+        }
+      });
+    };
+    const defaultCountdownSeconds = 600;
+    countdownNameInput.placeholder = countdownText('namePlaceholder', 'Timer name');
+    const showCountdownMessage = (message, isError = false) => {
+      countdownMessage.textContent = message;
+      countdownMessage.style.display = 'block';
+      countdownMessage.style.color = isError ? '#b00020' : 'green';
+    };
+    const renderCountdownTimers = () => {
+      countdownTimersList.replaceChildren();
+      countdownNames.forEach((name, index) => {
+        const item = document.createElement('li');
+        item.className = 'countdown-timer';
+        const label = document.createElement('span');
+        label.textContent = name;
+        const durationField = document.createElement('div');
+        durationField.className = 'countdown-duration';
+        const durationLabel = document.createElement('label');
+        durationLabel.htmlFor = `countdown-duration-${index}`;
+        durationLabel.textContent = countdownText('duration', 'Seconds');
+        const durationInput = document.createElement('input');
+        durationInput.id = `countdown-duration-${index}`;
+        durationInput.className = 'homey-form-input';
+        durationInput.type = 'number';
+        durationInput.min = '1';
+        durationInput.max = '8640000000000';
+        durationInput.step = '1';
+        durationInput.value = String(countdownDurations[name] || defaultCountdownSeconds);
+        durationInput.disabled = !settingsReady;
+        durationInput.setAttribute('aria-label', `${name} ${durationLabel.textContent}`);
+        durationInput.addEventListener('change', () => {
+          const seconds = Number(durationInput.value);
+          if (!Number.isSafeInteger(seconds) || seconds < 1 || seconds > 8640000000000) {
+            durationInput.value = String(countdownDurations[name] || defaultCountdownSeconds);
+            showCountdownMessage(countdownText('invalidDuration', 'Duration must be a positive whole number of seconds.'), true);
+            return;
+          }
+          const updatedDurations = { ...countdownDurations, [name]: seconds };
+          setSetting('countdownTimerDurations', updatedDurations)
+            .then(() => {
+              countdownDurations = updatedDurations;
+              showCountdownMessage(countdownText('saved', 'Countdown timers saved.'));
+            })
+            .catch((error) => showCountdownMessage(error.message || String(error), true));
+        });
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'homey-button-secondary';
+        removeButton.textContent = countdownText('remove', 'Remove');
+        removeButton.disabled = !settingsReady;
+        removeButton.addEventListener('click', () => {
+          saveCountdownNames(countdownNames.filter((timerName) => timerName !== name));
+        });
+        durationField.append(durationLabel, durationInput);
+        item.append(label, durationField, removeButton);
+        countdownTimersList.append(item);
+      });
+    };
+    const validateCountdownNames = (names) => {
+      if (!Array.isArray(names) || !names.every((name) => typeof name === 'string')) {
+        throw new Error(countdownText('invalidImport', 'The timer list must contain only names.'));
+      }
+      const normalized = names.map((name) => name.trim());
+      if (normalized.some((name) => name.length === 0 || name.length > 80)) {
+        throw new Error(countdownText('invalidName', 'Timer names must contain between 1 and 80 characters.'));
+      }
+      if (new Set(normalized.map((name) => name.toLowerCase())).size !== normalized.length) {
+        throw new Error(countdownText('duplicateName', 'Timer names must be unique.'));
+      }
+      return normalized;
+    };
+    const validateCountdownDurations = (durations) => {
+      if (!durations || typeof durations !== 'object' || Array.isArray(durations)) {
+        throw new Error(countdownText('invalidDuration', 'Countdown timer durations are invalid.'));
+      }
+      const normalized = {};
+      Object.entries(durations).forEach(([name, seconds]) => {
+        if (!Number.isSafeInteger(seconds) || seconds < 1 || seconds > 8640000000000) {
+          throw new Error(countdownText('invalidDuration', 'Duration must be a positive whole number of seconds.'));
+        }
+        normalized[name] = seconds;
+      });
+      return normalized;
+    };
+    const saveCountdownNames = (names, durations = countdownDurations) => {
+      let normalized;
+      let normalizedDurations;
+      try {
+        normalized = validateCountdownNames(names);
+        normalizedDurations = validateCountdownDurations(Object.fromEntries(normalized.map((name) => [
+          name,
+          durations[name] === undefined ? defaultCountdownSeconds : durations[name],
+        ])));
+      } catch (error) {
+        showCountdownMessage(error.message, true);
+        return;
+      }
+      Promise.all([
+        setSetting('countdownTimerNames', normalized),
+        setSetting('countdownTimerDurations', normalizedDurations),
+      ])
+        .then(() => {
+          countdownNames = normalized;
+          countdownDurations = normalizedDurations;
+          renderCountdownTimers();
+          showCountdownMessage(countdownText('saved', 'Countdown timers saved.'));
+        })
+        .catch((error) => showCountdownMessage(error.message || String(error), true));
+    };
+    countdownAddButton.addEventListener('click', () => {
+      const name = countdownNameInput.value.trim();
+      if (!name) {
+        showCountdownMessage(countdownText('invalidName', 'Enter a timer name.'), true);
+        return;
+      }
+      saveCountdownNames([...countdownNames, name]);
+      countdownNameInput.value = '';
+    });
+    countdownNameInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        countdownAddButton.click();
+      }
+    });
+    loadSetting('countdownTimerDurations', (durations) => {
+      if (durations && (typeof durations !== 'object' || Array.isArray(durations))) {
+        throw new Error(countdownText('invalidDuration', 'Countdown timer durations are invalid.'));
+      }
+      countdownDurations = validateCountdownDurations(durations || {});
+      renderCountdownTimers();
+    });
+    refreshActiveCountdowns();
+    setInterval(refreshActiveCountdowns, 1000);
+    countdownExportButton.addEventListener('click', () => {
+      const exportFile = new Blob(
+        [JSON.stringify({
+          version: 2,
+          timers: countdownNames.map((name) => ({
+            name,
+            seconds: countdownDurations[name] || defaultCountdownSeconds,
+          })),
+        }, null, 2)],
+        { type: 'application/json' },
+      );
+      const downloadUrl = URL.createObjectURL(exportFile);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = 'homey-toolkit-countdown-timers.json';
+      link.click();
+      URL.revokeObjectURL(downloadUrl);
+    });
+    countdownImportInput.addEventListener('change', () => {
+      const [file] = countdownImportInput.files;
+      if (!file) {
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          const importedTimers = Array.isArray(imported) ? imported : imported.timers;
+          if (!Array.isArray(importedTimers)) {
+            throw new Error(countdownText('invalidImport', 'Invalid timer export file.'));
+          }
+          if (importedTimers.every((timer) => typeof timer === 'string')) {
+            saveCountdownNames(validateCountdownNames(importedTimers));
+          } else if (importedTimers.every((timer) => (
+            timer && typeof timer === 'object'
+            && typeof timer.name === 'string'
+            && Number.isSafeInteger(timer.seconds)
+          ))) {
+            const names = validateCountdownNames(importedTimers.map((timer) => timer.name));
+            const durations = Object.fromEntries(importedTimers.map((timer, index) => [
+              names[index],
+              timer.seconds,
+            ]));
+            saveCountdownNames(names, durations);
+          } else {
+            throw new Error(countdownText('invalidImport', 'Invalid timer export file.'));
+          }
+        } catch (error) {
+          showCountdownMessage(error.message || countdownText('invalidImport', 'Invalid timer export file.'), true);
+        } finally {
+          countdownImportInput.value = '';
+        }
+      };
+      reader.onerror = () => {
+        showCountdownMessage(countdownText('importFailed', 'Could not read the timer export file.'), true);
+        countdownImportInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+    loadSetting('countdownTimerNames', (names) => {
+      countdownNames = validateCountdownNames(names || []);
+      renderCountdownTimers();
+    });
+    displayCorsSettings();
+
+    Homey.ready();
+  }
+</script>
+</body>
+</html>

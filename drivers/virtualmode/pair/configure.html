@@ -1,0 +1,49 @@
+<form id="form" class="homey-form">
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="name" data-i18n="virtual.name"></label>
+    <input class="homey-form-input" id="name" required maxlength="80">
+  </div>
+  <div class="homey-form-group">
+    <label class="homey-form-label" for="icon" data-i18n="virtual.icon"></label>
+    <select class="homey-form-select" id="icon">
+      <option value="default" data-i18n="virtual.iconDefault"></option>
+      <option value="star" data-i18n="virtual.iconStar"></option>
+      <option value="circle" data-i18n="virtual.iconCircle"></option>
+      <option value="upload" data-i18n="virtual.iconUpload"></option>
+    </select>
+    <input id="icon-file" type="file" accept=".svg,image/svg+xml" hidden>
+  </div>
+  <button class="homey-button-primary-full" type="submit" data-i18n="virtual.add"></button>
+</form>
+<script>
+  document.getElementById('icon').addEventListener('change', (event) => {
+    document.getElementById('icon-file').hidden = event.target.value !== 'upload';
+  });
+  document.getElementById('form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const button = event.currentTarget.querySelector('button');
+    button.disabled = true;
+    let device;
+    let created = false;
+    try {
+      const type = document.getElementById('icon').value;
+      const file = document.getElementById('icon-file').files[0];
+      if (type === 'upload' && !file) throw new Error(Homey.__('virtual.iconRequired'));
+      const icon = { type, ...(file && type === 'upload' ? { svg: await file.text() } : {}) };
+      device = await Homey.emit('prepare', { name: document.getElementById('name').value, icon });
+      await Homey.createDevice(device);
+      created = true;
+      await Homey.done();
+    } catch (error) {
+      if (device && device.data.iconId && !created) {
+        try {
+          await Homey.emit('discard_icon', device.data.iconId);
+        } catch (cleanupError) {
+          await Homey.alert(cleanupError.message || String(cleanupError), 'error');
+        }
+      }
+      await Homey.alert(error.message || String(error), 'error');
+      button.disabled = false;
+    }
+  });
+</script>

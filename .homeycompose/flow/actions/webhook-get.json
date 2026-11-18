@@ -1,0 +1,7 @@
+{
+  "title": { "en": "Send a GET webhook", "de": "GET-Webhook senden", "nl": "GET-webhook versturen" },
+  "titleFormatted": { "en": "Send a GET webhook to [[url]]", "de": "GET-Webhook an [[url]] senden", "nl": "Verstuur een GET-webhook naar [[url]]" },
+  "args": [
+    { "type": "text", "name": "url", "placeholder": { "en": "HTTP or HTTPS URL", "de": "HTTP- oder HTTPS-URL", "nl": "HTTP- of HTTPS-URL" } }
+  ]
+}

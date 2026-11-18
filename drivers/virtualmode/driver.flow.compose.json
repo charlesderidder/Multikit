@@ -1,0 +1,11 @@
+{
+  "triggers": [
+    { "id": "virtual-mode-on", "title": { "en": "Mode is turned on", "nl": "Modus wordt aangezet", "de": "Modus wird eingeschaltet" } },
+    { "id": "virtual-mode-off", "title": { "en": "Mode is turned off", "nl": "Modus wordt uitgezet", "de": "Modus wird ausgeschaltet" } },
+    { "id": "virtual-mode-changed", "title": { "en": "Mode changed", "nl": "Modus verandert", "de": "Modus ändert sich" } }
+  ],
+  "actions": [
+    { "id": "virtual-mode-on-silent", "title": { "en": "Turn mode on without custom triggers", "nl": "Zet modus aan zonder eigen triggers", "de": "Modus ohne eigene Trigger einschalten" } },
+    { "id": "virtual-mode-off-silent", "title": { "en": "Turn mode off without custom triggers", "nl": "Zet modus uit zonder eigen triggers", "de": "Modus ohne eigene Trigger ausschalten" } }
+  ]
+}

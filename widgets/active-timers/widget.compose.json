@@ -1,0 +1,15 @@
+{
+  "name": {
+    "en": "Active timers",
+    "de": "Aktive Timer",
+    "nl": "Actieve timers"
+  },
+  "height": 320,
+  "settings": [],
+  "api": {
+    "getTimers": {
+      "method": "GET",
+      "path": "/timers"
+    }
+  }
+}

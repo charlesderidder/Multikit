@@ -1,0 +1,15 @@
+{
+  "name": {
+    "en": "Email quota",
+    "de": "E-Mail-Kontingent",
+    "nl": "E-mailquotum"
+  },
+  "height": 260,
+  "settings": [],
+  "api": {
+    "getStatus": {
+      "method": "GET",
+      "path": "/status"
+    }
+  }
+}

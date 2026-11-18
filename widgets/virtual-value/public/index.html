@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtual device value</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 12px; }
+    header { display: flex; align-items: center; gap: 10px; }
+    img { width: 42px; height: 42px; object-fit: cover; border-radius: 12px; }
+    h1 { margin: 0; font-size: 1rem; }
+    #capability { margin: 12px 0 4px; color: #777; font-size: .82rem; }
+    form { display: flex; gap: 8px; }
+    input { flex: 1; min-width: 0; padding: 10px; border: 1px solid #80808066; border-radius: 8px; font: inherit; }
+    button { padding: 10px 14px; border: 0; border-radius: 8px; background: #0052cc; color: #fff; font: inherit; }
+    #toggle { align-items: center; justify-content: space-between; padding: 12px 0; }
+    #status { min-height: 20px; margin-top: 10px; font-size: .85rem; }
+  </style>
+  <script src="/homey.js" data-origin="widget"></script>
+</head>
+<body>
+  <header><img src="./art.png" alt=""><h1 id="title"></h1></header>
+  <p id="capability"></p>
+  <form id="form">
+    <input id="value" autocomplete="off">
+    <button id="save" type="submit"></button>
+  </form>
+  <p id="status" role="status" aria-live="polite"></p>
+  <script>
+    function onHomeyReady(Homey) {
+      const text = (key) => Homey.__(`settings.widgets.virtualValue.${key}`);
+      const selected = Homey.getSettings().source;
+      const title = document.getElementById('title');
+      const capability = document.getElementById('capability');
+      const form = document.getElementById('form');
+      const input = document.getElementById('value');
+      const save = document.getElementById('save');
+      const status = document.getElementById('status');
+      let type = 'string';
+      save.textContent = text('save');
+      const load = async () => {
+        if (!selected) {
+          title.textContent = text('notSelected');
+          form.hidden = true;
+          return;
+        }
+        try {
+          const query = `deviceId=${encodeURIComponent(selected.deviceId)}&capabilityId=${encodeURIComponent(selected.capabilityId)}`;
+          const result = await Homey.api('GET', `/value?${query}`, {});
+          type = result.type;
+          title.textContent = result.deviceName;
+          capability.textContent = result.capabilityId;
+          if (document.activeElement !== input) {
+            input.type = type === 'number' ? 'number' : type === 'boolean' ? 'checkbox' : 'text';
+            if (type === 'boolean') input.checked = Boolean(result.value);
+            else input.value = result.value === null || result.value === undefined ? '' : String(result.value);
+          }
+          status.textContent = '';
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+        }
+      };
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        save.disabled = true;
+        try {
+          const value = type === 'boolean' ? input.checked
+            : type === 'number' ? Number(input.value) : input.value;
+          await Homey.api('POST', '/value', { source: selected, value });
+          status.textContent = text('saved');
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+        } finally {
+          save.disabled = false;
+          load();
+        }
+      });
+      load();
+      setInterval(load, 5000);
+      Homey.ready();
+    }
+  </script>
+</body>
+</html>

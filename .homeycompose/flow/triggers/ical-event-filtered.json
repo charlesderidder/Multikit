@@ -1,0 +1,39 @@
+{
+  "title": {
+    "en": "A matching iCal event changes",
+    "de": "Ein passendes iCal-Ereignis ändert sich",
+    "nl": "Een passende iCal-afspraak verandert"
+  },
+  "titleFormatted": {
+    "en": "An iCal event [[eventType]] with title containing [[title]] in calendar [[calendar]]",
+    "de": "Ein iCal-Ereignis [[eventType]] mit Titel [[title]] im Kalender [[calendar]]",
+    "nl": "Een iCal-afspraak [[eventType]] met titel [[title]] in agenda [[calendar]]"
+  },
+  "hint": {
+    "en": "Title matching is case-insensitive and searches within the title. Calendar names must match exactly, ignoring case. Use * for any title or calendar.",
+    "de": "Der Titel wird ohne Beachtung der Großschreibung durchsucht. Der Kalendername muss ohne Beachtung der Großschreibung genau übereinstimmen. * steht für beliebige Titel oder Kalender.",
+    "nl": "De titel wordt hoofdletterongevoelig doorzocht. De agendanaam moet exact overeenkomen, zonder onderscheid tussen hoofdletters en kleine letters. Gebruik * voor elke titel of agenda."
+  },
+  "args": [
+    { "type": "dropdown", "name": "eventType", "values": [
+      { "id": "ical-event-started", "label": { "en": "starts", "de": "beginnt", "nl": "begint" } },
+      { "id": "ical-event-ended", "label": { "en": "ends", "de": "endet", "nl": "eindigt" } },
+      { "id": "ical-event-added", "label": { "en": "is added", "de": "hinzugefügt wird", "nl": "wordt toegevoegd" } },
+      { "id": "ical-event-changed", "label": { "en": "is changed", "de": "geändert wird", "nl": "wordt gewijzigd" } }
+    ] },
+    { "type": "text", "name": "title", "placeholder": { "en": "Title contains, or *", "de": "Titel enthält, oder *", "nl": "Titel bevat, of *" } },
+    { "type": "text", "name": "calendar", "placeholder": { "en": "Calendar name, or *", "de": "Kalendername, oder *", "nl": "Agendanaam, of *" } }
+  ],
+  "tokens": [
+    { "name": "title", "type": "string", "title": { "en": "Title", "de": "Titel", "nl": "Titel" } },
+    { "name": "description", "type": "string", "title": { "en": "Description", "de": "Beschreibung", "nl": "Beschrijving" } },
+    { "name": "location", "type": "string", "title": { "en": "Location", "de": "Ort", "nl": "Locatie" } },
+    { "name": "calendar", "type": "string", "title": { "en": "Calendar", "de": "Kalender", "nl": "Agenda" } },
+    { "name": "start", "type": "string", "title": { "en": "Start", "de": "Beginn", "nl": "Start" } },
+    { "name": "end", "type": "string", "title": { "en": "End", "de": "Ende", "nl": "Einde" } },
+    { "name": "duration", "type": "number", "title": { "en": "Duration (minutes)", "de": "Dauer (Minuten)", "nl": "Duur (minuten)" } },
+    { "name": "url", "type": "string", "title": { "en": "Event URL", "de": "Ereignis-URL", "nl": "Afspraak-URL" } },
+    { "name": "status", "type": "string", "title": { "en": "Status", "de": "Status", "nl": "Status" } },
+    { "name": "uid", "type": "string", "title": { "en": "UID", "de": "UID", "nl": "UID" } }
+  ]
+}

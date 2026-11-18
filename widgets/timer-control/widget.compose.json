@@ -1,0 +1,29 @@
+{
+  "name": {
+    "en": "Timer control",
+    "de": "Timersteuerung",
+    "nl": "Timerbediening"
+  },
+  "height": 320,
+  "settings": [
+    {
+      "id": "timer",
+      "type": "autocomplete",
+      "title": {
+        "en": "Timer",
+        "de": "Timer",
+        "nl": "Timer"
+      }
+    }
+  ],
+  "api": {
+    "getTimer": {
+      "method": "GET",
+      "path": "/timer"
+    },
+    "controlTimer": {
+      "method": "POST",
+      "path": "/control"
+    }
+  }
+}

@@ -4,9 +4,33 @@
     "node/no-unsupported-features/es-syntax": [
       "error",
       { "ignores": ["modules"] }
+    ],
+    "node/no-missing-import": [
+      "error",
+      { "allowModules": ["homey"], "tryExtensions": [".js", ".json", ".node", ".ts"] }
+    ],
+    "import/extensions": [
+      "error",
+      "ignorePackages",
+      { "js": "never", "mjs": "never", "jsx": "never", "ts": "never" }
     ]
+  },
+  "settings": {
+    "import/resolver": {
+      "node": { "extensions": [".js", ".json", ".node", ".ts"] }
+    }
   },
   "parserOptions": {
     "project": "./tsconfig.json"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["scripts/**/*.js", "tests/**/*.js"],
+      "parserOptions": { "project": null }
+    },
+    {
+      "files": ["tests/**/*.js"],
+      "rules": { "max-classes-per-file": "off" }
+    }
+  ]
 }

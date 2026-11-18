@@ -3,5 +3,12 @@
   "compilerOptions": {
     "allowJs": true,
     "outDir": ".homeybuild/"
-  }
+  },
+  "exclude": [
+    ".homeybuild",
+    "dev.charlesderidder.httpapi",
+    "node_modules",
+    "scripts",
+    "tests"
+  ]
 }

@@ -1,13 +1,13 @@
 {
   "title": {
-    "en": "An HTTP API request is received",
-    "de": "Eine HTTP-API-Anfrage wird empfangen",
-    "nl": "Er is een HTTP API-verzoek ontvangen"
+    "en": "A Multikit API request is received",
+    "de": "Eine Multikit-API-Anfrage wird empfangen",
+    "nl": "Er is een Multikit API-verzoek ontvangen"
   },
   "titleFormatted": {
-    "en": "A [[method]] request received on url [[url]]",
-    "de": "Eine [[method]]-Anfrage mit der URL [[url]] wurde empfangen",
-    "nl": "Een [[method]]-verzoek ontvangen op url [[url]]"
+    "en": "A [[method]] request received by Multikit on [[url]]",
+    "de": "Eine [[method]]-Anfrage von Multikit auf [[url]] wurde empfangen",
+    "nl": "Een [[method]]-verzoek ontvangen door Multikit op [[url]]"
   },
   "args": [
     {

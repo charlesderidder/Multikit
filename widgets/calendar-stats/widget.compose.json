@@ -1,0 +1,19 @@
+{
+  "name": {
+    "en": "Calendar statistics",
+    "de": "Kalenderstatistik",
+    "nl": "Agendastatistieken"
+  },
+  "height": 320,
+  "settings": [],
+  "api": {
+    "getStats": {
+      "method": "GET",
+      "path": "/stats"
+    },
+    "syncCalendars": {
+      "method": "POST",
+      "path": "/sync"
+    }
+  }
+}

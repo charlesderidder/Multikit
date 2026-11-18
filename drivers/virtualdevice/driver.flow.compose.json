@@ -1,0 +1,28 @@
+{
+  "triggers": [
+    {
+      "id": "virtual-device-pressed",
+      "title": { "en": "A control is pressed or changed", "nl": "Een bediening wordt ingedrukt of gewijzigd", "de": "Eine Bedienung wird gedrückt oder geändert" }
+    }
+  ],
+  "actions": [
+    {
+      "id": "virtual-device-set-value",
+      "title": { "en": "Set a virtual sensor value", "nl": "Stel een virtuele sensorwaarde in", "de": "Virtuellen Sensorwert setzen" },
+      "titleFormatted": { "en": "Set [[sensor]] to [[value]]", "nl": "Stel [[sensor]] in op [[value]]", "de": "[[sensor]] auf [[value]] setzen" },
+      "args": [
+        { "type": "text", "name": "sensor", "title": { "en": "Capability ID", "nl": "Eigenschap-ID", "de": "Eigenschafts-ID" } },
+        { "type": "text", "name": "value", "title": { "en": "Value", "nl": "Waarde", "de": "Wert" } }
+      ]
+    },
+    {
+      "id": "virtual-device-select-value",
+      "title": { "en": "Set a selected virtual sensor", "nl": "Stel een gekozen virtuele sensor in", "de": "Ausgewählten virtuellen Sensor setzen" },
+      "titleFormatted": { "en": "Set [[sensor]] to [[value]]", "nl": "Stel [[sensor]] in op [[value]]", "de": "[[sensor]] auf [[value]] setzen" },
+      "args": [
+        { "type": "autocomplete", "name": "sensor", "title": { "en": "Capability", "nl": "Eigenschap", "de": "Eigenschaft" } },
+        { "type": "text", "name": "value", "title": { "en": "Value", "nl": "Waarde", "de": "Wert" } }
+      ]
+    }
+  ]
+}

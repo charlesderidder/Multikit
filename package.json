@@ -1,10 +1,10 @@
 {
   "name": "dev.charlesderidder.homeyhttpapi",
-  "version": "1.6.2",
+  "version": "1.8.0",
   "main": "app.ts",
   "license": "MIT",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/trim-homey-build.js",
     "lint": "eslint --ext .js,.ts --ignore-path .gitignore ."
   },
   "devDependencies": {
@@ -20,7 +20,10 @@
   },
   "dependencies": {
     "emailjs": "^3.8.1",
-    "node-ical": "^0.16.1"
+    "homey-lib": "^2.53.0",
+    "node-ical": "^0.16.1",
+    "saxes": "^6.0.0",
+    "semver": "^7.7.3"
   },
   "overrides": {
     "node-ical": {

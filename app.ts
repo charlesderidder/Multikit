@@ -1,13 +1,15 @@
 import Homey from 'homey';
 import http, { IncomingMessage, ServerResponse } from 'http';
 import { EventEmitter } from 'events';
-import { timingSafeEqual } from 'crypto';
-import { SMTPClient } from 'emailjs';
-import * as ical from 'node-ical';
+import { createHash, timingSafeEqual } from 'crypto';
+import type { SMTPClient } from 'emailjs';
+import type { CalendarResponse, VEvent } from 'node-ical';
 import LocalApiRequestArgs from './helpers/types/LocalApiRequestArgs';
 import LocalApiRequestState from './helpers/types/LocalApiRequestState';
+import BrowserSettings from './helpers/browser-settings';
+import sendWebhook, { StoredWebhook, validateStoredWebhooks } from './helpers/webhook';
 
-// Methods that the HTTP API server will ever handle
+// Methods that the Homey Multikit API server will ever handle
 const ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
 const ALLOWED_METHODS_HEADER = ALLOWED_METHODS.join(', ');
 // Reject request bodies larger than this to avoid memory exhaustion (DoS protection)
@@ -49,6 +51,11 @@ interface GmailEmailFlowArgs {
   body: unknown;
 }
 
+interface EmailDailyUsage {
+  date: string;
+  count: number;
+}
+
 interface ICalCalendar {
   name: string;
   url: string;
@@ -68,6 +75,15 @@ interface ICalEvent {
   end: number;
   source: 'remote' | 'local';
 }
+
+interface ICalSyncSnapshot {
+  id: string;
+  fingerprint: string;
+}
+
+type ICalCalendarSyncResult =
+  | { calendar: ICalCalendar; events: ICalEvent[] }
+  | { calendar: ICalCalendar; error: string };
 
 interface ICalSyncChange {
   calendar: string;
@@ -96,18 +112,38 @@ interface ICalFlowArgs {
   end?: unknown;
   description?: unknown;
   location?: unknown;
+  eventType?: unknown;
+}
+
+interface CountdownWidgetTimer {
+  name: string;
+  value: number;
+  configuredSeconds: number | null;
+  running: boolean;
+  paused: boolean;
+  round: number;
+  roundsRemaining: number;
+  expiresAt: number | null;
+}
+
+interface VirtualWidgetSelection {
+  deviceId: string;
+  capabilityId: string;
 }
 
 const COUNTDOWN_TIMER_NAMES_SETTING = 'countdownTimerNames';
 const COUNTDOWN_TIMER_STATES_SETTING = 'countdownTimerStates';
 const COUNTDOWN_TIMER_DURATIONS_SETTING = 'countdownTimerDurations';
+const EMAIL_DAILY_USAGE_SETTING = 'emailDailyUsage';
 const ICAL_CALENDARS_SETTING = 'icalCalendars';
 const ICAL_EVENTS_SETTING = 'icalEvents';
 const ICAL_SYNC_SNAPSHOTS_SETTING = 'icalSyncSnapshots';
 const ICAL_SYNC_INTERVAL_SETTING = 'icalSyncInterval';
 const ICAL_SYNC_DAYS_SETTING = 'icalSyncDays';
+const ICAL_AUTO_SYNC_SETTING = 'icalAutoSync';
 const COUNTDOWN_INTERVAL_MS = 1000;
 const ICAL_SYNC_INTERVAL_MINUTES = 15;
+const ICAL_SYNC_CONCURRENCY = 2;
 const ICAL_SYNC_DAYS = 30;
 const ICAL_SYNC_TIMEOUT_MS = 15000;
 const ICAL_MAX_BYTES = 2 * 1024 * 1024;
@@ -115,6 +151,8 @@ const ICAL_MAX_EVENTS_PER_CALENDAR = 5000;
 const DEFAULT_COUNTDOWN_SECONDS = 600;
 const MAX_COUNTDOWN_SECONDS = Math.floor((8.64e15 - Date.now()) / 1000);
 const MAX_COUNTDOWN_ROUNDS = 1000;
+const MAX_DAILY_EMAILS = 500;
+const MAX_EMAIL_RECIPIENTS = 500;
 const COUNTDOWN_TRIGGER_IDS = [
   'countdown-reaches-zero',
   'countdown-reaches-value',
@@ -133,6 +171,16 @@ const ICAL_TRIGGER_IDS = [
 
 class LocalApi extends Homey.App {
 
+  browserSettings = new BrowserSettings(this);
+
+  setBrowserSettingsPassword(password: unknown, username: unknown): void {
+    this.browserSettings.setPassword(password, username);
+  }
+
+  getBrowserSettingsUsername(): string {
+    return this.browserSettings.getUsername();
+  }
+
   localApiEvent: EventEmitter = new EventEmitter();
   requestReceivedArgs: Array<LocalApiRequestArgs> = [];
   server?: http.Server;
@@ -140,9 +188,10 @@ class LocalApi extends Homey.App {
   countdownTimers = new Map<string, CountdownTimer>();
   countdownTimerDurations = new Map<string, number>();
   countdownTriggers = new Map<string, Homey.FlowCardTrigger>();
+  emailSendQueue: Promise<void> = Promise.resolve();
   countdownInterval?: ReturnType<typeof setInterval>;
   icalEvents: ICalEvent[] = [];
-  icalSyncSnapshots = new Map<string, ICalEvent[]>();
+  icalSyncSnapshots = new Map<string, ICalSyncSnapshot[]>();
   icalInterval?: ReturnType<typeof setInterval>;
   icalEventTickInterval?: ReturnType<typeof setInterval>;
   icalConfigTimeout?: ReturnType<typeof setTimeout>;
@@ -150,6 +199,10 @@ class LocalApi extends Homey.App {
   icalFlowTokens = new Map<string, Homey.FlowToken>();
   lastICalTick = Date.now();
   icalTriggers = new Map<string, Homey.FlowCardTrigger>();
+  lastCalendarSync: { time: string; failures: ICalCalendarSyncFailure[] } | null = null;
+  lastEmailResult: { time: string; success: boolean; error?: string } | null = null;
+  lastWebhookResult: { time: string; success: boolean; error?: string } | null = null;
+  apiServerError: string | null = null;
 
   getCountdownName(value: unknown): string {
     let selectedName = value;
@@ -186,7 +239,56 @@ class LocalApi extends Homey.App {
     return this.homey.settings.get(key);
   }
 
+  getEmailUsageDate(now = new Date()): string {
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
+
+  getEmailDailyUsage(now = new Date()): EmailDailyUsage {
+    const rawUsage: unknown = this.homey.settings.get(EMAIL_DAILY_USAGE_SETTING);
+    const today = this.getEmailUsageDate(now);
+    if (rawUsage === undefined || rawUsage === null) {
+      return { date: today, count: 0 };
+    }
+    if (
+      typeof rawUsage !== 'object'
+      || !('date' in rawUsage)
+      || !('count' in rawUsage)
+      || typeof rawUsage.date !== 'string'
+      || typeof rawUsage.count !== 'number'
+      || !Number.isSafeInteger(rawUsage.count)
+      || rawUsage.count < 0
+    ) {
+      throw new Error('Saved daily email usage is invalid.');
+    }
+    if (rawUsage.date !== today) {
+      return { date: today, count: 0 };
+    }
+    return { date: rawUsage.date, count: rawUsage.count };
+  }
+
+  saveEmailDailyUsage(usage: EmailDailyUsage): void {
+    this.homey.settings.set(EMAIL_DAILY_USAGE_SETTING, usage);
+  }
+
   async sendGmailEmail(to: string, subject: string, body: string): Promise<void> {
+    try {
+      await this.performGmailEmail(to, subject, body);
+      this.lastEmailResult = { time: new Date().toISOString(), success: true };
+    } catch (error) {
+      const code = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+        && /^[A-Z0-9_]{1,30}$/.test(error.code) ? ` (${error.code})` : '';
+      this.lastEmailResult = {
+        time: new Date().toISOString(),
+        success: false,
+        error: `Email sending failed${code}. Check the app or Flow log.`,
+      };
+      throw error;
+    }
+  }
+
+  async performGmailEmail(to: string, subject: string, body: string): Promise<void> {
     const gmailAddress = this.homey.settings.get('gmailAddress');
     const gmailAppPassword = this.homey.settings.get('gmailAppPassword');
     if (typeof gmailAddress !== 'string' || gmailAddress.trim() === '') {
@@ -195,29 +297,63 @@ class LocalApi extends Homey.App {
     if (typeof gmailAppPassword !== 'string' || gmailAppPassword.trim() === '') {
       throw new Error('Configure a Gmail app password in the Email settings tab before sending email.');
     }
-    const recipient = to.trim();
-    if (recipient.length > 254 || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(recipient)) {
-      throw new Error('Enter one valid recipient email address.');
+    if (typeof to !== 'string') {
+      throw new Error('Email recipients must be provided as text.');
+    }
+    const recipients = to.split(',').map((recipient) => recipient.trim());
+    if (
+      recipients.length === 0
+      || recipients.some((recipient) => (
+        recipient.length > 254
+        || !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(recipient)
+      ))
+    ) {
+      throw new Error(`Enter between 1 and ${MAX_EMAIL_RECIPIENTS} valid recipient email addresses separated by commas.`);
+    }
+    if (recipients.length > MAX_EMAIL_RECIPIENTS) {
+      throw new Error(`An email can have no more than ${MAX_EMAIL_RECIPIENTS} recipients.`);
     }
 
-    const client = new SMTPClient({
-      host: 'smtp.gmail.com',
-      port: 587,
-      ssl: false,
-      tls: true,
-      user: gmailAddress.trim(),
-      password: gmailAppPassword.replace(/\s/g, ''),
+    const sendEmail = this.emailSendQueue.then(async () => {
+      const usage = this.getEmailDailyUsage();
+      if (usage.count >= MAX_DAILY_EMAILS) {
+        throw new Error(`The daily limit of ${MAX_DAILY_EMAILS} emails has been reached. Try again after midnight.`);
+      }
+      const reservedUsage = { date: usage.date, count: usage.count + 1 };
+      this.saveEmailDailyUsage(reservedUsage);
+
+      const { SMTPClient: EmailClient } = require('emailjs') as typeof import('emailjs'); // eslint-disable-line global-require
+      let client: SMTPClient | undefined;
+      try {
+        client = new EmailClient({
+          host: 'smtp.gmail.com',
+          port: 587,
+          ssl: false,
+          tls: true,
+          user: gmailAddress.trim(),
+          password: gmailAppPassword.replace(/\s/g, ''),
+        });
+        await client.sendAsync({
+          from: gmailAddress.trim(),
+          to: recipients.join(', '),
+          subject,
+          text: body,
+        });
+      } catch (error) {
+        try {
+          this.saveEmailDailyUsage({ date: reservedUsage.date, count: reservedUsage.count - 1 });
+        } catch (saveError) {
+          this.error('Could not release daily email quota after sending failed', saveError);
+        }
+        throw error;
+      } finally {
+        if (client) {
+          client.smtp.close();
+        }
+      }
     });
-    try {
-      await client.sendAsync({
-        from: gmailAddress.trim(),
-        to: recipient,
-        subject,
-        text: body,
-      });
-    } finally {
-      client.smtp.close();
-    }
+    this.emailSendQueue = sendEmail.then(() => undefined, () => undefined);
+    await sendEmail;
   }
 
   async sendTestEmail(): Promise<void> {
@@ -225,11 +361,273 @@ class LocalApi extends Homey.App {
     if (typeof gmailAddress !== 'string' || gmailAddress.trim() === '') {
       throw new Error('Configure your Gmail address in the Email settings tab before sending a test email.');
     }
+
     await this.sendGmailEmail(
       gmailAddress,
-      'Homey Toolkit - Test email',
-      'This is a test email from Homey Toolkit. Gmail email sending is working.',
+      'Homey Multikit - Test email',
+      'This is a test email from Homey Multikit. Gmail email sending is working.',
     );
+  }
+
+  async sendWebhook(args: { url?: unknown; method?: unknown; headers?: unknown; body?: unknown }): Promise<void> {
+    try {
+      await sendWebhook(args);
+      this.lastWebhookResult = { time: new Date().toISOString(), success: true };
+    } catch (error) {
+      this.lastWebhookResult = {
+        time: new Date().toISOString(),
+        success: false,
+        error: error instanceof Error && /^Webhook returned HTTP \d+\.$/.test(error.message)
+          ? error.message : 'Webhook failed. Check the Flow log.',
+      };
+      throw error;
+    }
+  }
+
+  getStoredWebhooks(): StoredWebhook[] {
+    const saved: unknown = this.homey.settings.get('webhooks');
+    return validateStoredWebhooks(saved === undefined || saved === null ? [] : saved);
+  }
+
+  getWidgetWebhooks(): Array<{ id: string; name: string; method: string }> {
+    return this.getStoredWebhooks()
+      .map(({ id, name, method }) => ({ id, name, method }))
+      .sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  getWidgetSelectionId(value: unknown): string {
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object' && 'id' in value && typeof value.id === 'string') {
+      return value.id;
+    }
+    throw new Error('Select an item in the widget settings first.');
+  }
+
+  async runWidgetWebhook(value: unknown): Promise<{ success: true }> {
+    const id = this.getWidgetSelectionId(value);
+    const webhook = this.getStoredWebhooks().find((entry) => entry.id === id);
+    if (!webhook) {
+      throw new Error('The selected saved webhook no longer exists. Update the widget settings.');
+    }
+    await this.sendWebhook(webhook);
+    return { success: true };
+  }
+
+  getCountdownWidgetTimer(timer: CountdownTimer): CountdownWidgetTimer {
+    return {
+      name: timer.name,
+      value: this.getCountdownValue(timer),
+      configuredSeconds: this.countdownTimerDurations.get(timer.name) ?? null,
+      running: timer.expiresAt !== null && !timer.paused,
+      paused: timer.paused,
+      round: timer.round,
+      roundsRemaining: timer.roundsRemaining,
+      expiresAt: timer.expiresAt,
+    };
+  }
+
+  getActiveCountdownWidgetTimers(): CountdownWidgetTimer[] {
+    return Array.from(this.countdownTimers.values())
+      .filter((timer) => timer.expiresAt !== null || timer.paused)
+      .sort((left, right) => {
+        const leftExpiry = left.expiresAt ?? Number.POSITIVE_INFINITY;
+        const rightExpiry = right.expiresAt ?? Number.POSITIVE_INFINITY;
+        return leftExpiry - rightExpiry || left.name.localeCompare(right.name);
+      })
+      .map((timer) => this.getCountdownWidgetTimer(timer));
+  }
+
+  getCountdownWidgetTimers(): Array<{ id: string; name: string }> {
+    return Array.from(this.countdownTimers.keys())
+      .sort((left, right) => left.localeCompare(right))
+      .map((name) => ({ id: name, name }));
+  }
+
+  getCountdownWidgetTimerState(value: unknown): CountdownWidgetTimer {
+    const timer = this.getCountdownTimer(this.getWidgetSelectionId(value));
+    return this.getCountdownWidgetTimer(timer);
+  }
+
+  async controlCountdownWidgetTimer(value: unknown, action: unknown): Promise<CountdownWidgetTimer> {
+    const timer = this.getCountdownTimer(this.getWidgetSelectionId(value));
+    if (action === 'start') {
+      await this.startCountdownIfNotRunning(timer.name);
+    } else if (action === 'restart') {
+      await this.resetCountdown(timer.name);
+    } else if (action === 'pause') {
+      await this.pauseCountdown(timer.name);
+    } else if (action === 'resume') {
+      await this.resumeCountdown(timer.name);
+    } else if (action === 'stop') {
+      await this.stopCountdown(timer);
+    } else {
+      throw new Error('Unsupported timer widget action.');
+    }
+    return this.getCountdownWidgetTimer(timer);
+  }
+
+  getEmailWidgetStatus(): {
+    configured: boolean;
+    sent: number;
+    limit: number;
+    recipientsPerEmail: number;
+    lastResult: { time: string; success: boolean; error?: string } | null;
+    } {
+    return {
+      configured: Boolean(this.homey.settings.get('gmailAddress') && this.homey.settings.get('gmailAppPassword')),
+      sent: this.getEmailDailyUsage().count,
+      limit: MAX_DAILY_EMAILS,
+      recipientsPerEmail: MAX_EMAIL_RECIPIENTS,
+      lastResult: this.lastEmailResult,
+    };
+  }
+
+  getCalendarWidgetStats(): {
+    today: number;
+    tomorrow: number;
+    upcoming: number;
+    nextEvent: { title: string; calendar: string; location: string; start: number; end: number } | null;
+    lastSync: { time: string; failures: ICalCalendarSyncFailure[] } | null;
+    } {
+    const now = Date.now();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const tomorrowStart = new Date(todayStart);
+    tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+    const nextDayStart = new Date(tomorrowStart);
+    nextDayStart.setDate(nextDayStart.getDate() + 1);
+    const upcoming = this.icalEvents
+      .filter((event) => event.end > now)
+      .sort((left, right) => left.start - right.start);
+    const nextEvent = upcoming[0] ? {
+      title: upcoming[0].title,
+      calendar: upcoming[0].calendar,
+      location: upcoming[0].location,
+      start: upcoming[0].start,
+      end: upcoming[0].end,
+    } : null;
+    return {
+      today: this.icalEvents.filter((event) => (
+        event.start >= todayStart.getTime() && event.start < tomorrowStart.getTime()
+      )).length,
+      tomorrow: this.icalEvents.filter((event) => (
+        event.start >= tomorrowStart.getTime() && event.start < nextDayStart.getTime()
+      )).length,
+      upcoming: upcoming.length,
+      nextEvent,
+      lastSync: this.lastCalendarSync,
+    };
+  }
+
+  getVirtualWidgetSelection(value: unknown): VirtualWidgetSelection {
+    if (!value || typeof value !== 'object' || !('deviceId' in value) || typeof value.deviceId !== 'string'
+      || !('capabilityId' in value) || typeof value.capabilityId !== 'string') {
+      throw new Error('Select a virtual device capability in the widget settings first.');
+    }
+    return { deviceId: value.deviceId, capabilityId: value.capabilityId };
+  }
+
+  getVirtualWidgetDevice(selection: VirtualWidgetSelection): Homey.Device & {
+    setVirtualValue(id: string, value: unknown): Promise<void>;
+  } {
+    const driver = this.homey.drivers.getDriver('virtualdevice');
+    const device = driver.getDevices().find((entry) => entry.getData().id === selection.deviceId);
+    if (!device || !device.hasCapability(selection.capabilityId)) {
+      throw new Error('The selected virtual device or capability no longer exists. Update the widget settings.');
+    }
+    return device as Homey.Device & { setVirtualValue(id: string, value: unknown): Promise<void> };
+  }
+
+  getVirtualWidgetOptions(query: string): Array<{
+    id: string;
+    name: string;
+    description: string;
+    deviceId: string;
+    capabilityId: string;
+  }> {
+    const HomeyLib = require('homey-lib') as typeof import('homey-lib'); // eslint-disable-line global-require
+    const definitions = HomeyLib.getCapabilities();
+    const needle = query.trim().toLowerCase();
+    return this.homey.drivers.getDriver('virtualdevice').getDevices().flatMap((device) => (
+      device.getCapabilities()
+        .filter((capabilityId) => definitions[capabilityId]?.getable)
+        .map((capabilityId) => ({
+          id: `${device.getData().id}:${capabilityId}`,
+          name: `${device.getName()} — ${capabilityId}`,
+          description: typeof definitions[capabilityId].title === 'string'
+            ? definitions[capabilityId].title
+            : definitions[capabilityId].title.en || capabilityId,
+          deviceId: String(device.getData().id),
+          capabilityId,
+        }))
+    )).filter((entry) => `${entry.name} ${entry.description}`.toLowerCase().includes(needle));
+  }
+
+  getVirtualWidgetValue(value: unknown): {
+    deviceName: string;
+    capabilityId: string;
+    type: string;
+    value: unknown;
+  } {
+    const HomeyLib = require('homey-lib') as typeof import('homey-lib'); // eslint-disable-line global-require
+    const selection = this.getVirtualWidgetSelection(value);
+    const device = this.getVirtualWidgetDevice(selection);
+    const definition = HomeyLib.getCapabilities()[selection.capabilityId];
+    if (!definition || !definition.getable) {
+      throw new Error('The selected capability cannot store a value.');
+    }
+    return {
+      deviceName: device.getName(),
+      capabilityId: selection.capabilityId,
+      type: definition.type,
+      value: device.getCapabilityValue(selection.capabilityId),
+    };
+  }
+
+  async setVirtualWidgetValue(value: unknown, rawValue: unknown): Promise<void> {
+    const selection = this.getVirtualWidgetSelection(value);
+    await this.getVirtualWidgetDevice(selection).setVirtualValue(selection.capabilityId, rawValue);
+  }
+
+  registerWidgetAutocompleteListeners(): void {
+    this.homey.dashboards.getWidget('saved-webhooks')
+      .registerSettingAutocompleteListener('webhook', (query) => (
+        this.getWidgetWebhooks()
+          .filter((webhook) => webhook.name.toLowerCase().includes(query.toLowerCase()))
+          .map((webhook) => ({
+            id: webhook.id, name: webhook.name, description: webhook.method,
+          }))
+      ));
+    this.homey.dashboards.getWidget('timer-control')
+      .registerSettingAutocompleteListener('timer', (query) => (
+        this.getCountdownWidgetTimers()
+          .filter((timer) => timer.name.toLowerCase().includes(query.toLowerCase()))
+      ));
+    this.homey.dashboards.getWidget('virtual-value')
+      .registerSettingAutocompleteListener('source', (query) => this.getVirtualWidgetOptions(query));
+  }
+
+  registerWebhookCards(): void {
+    this.homey.flow.getActionCard('webhook-send').registerRunListener(async (args) => {
+      await this.sendWebhook(args);
+      return true;
+    });
+    this.homey.flow.getActionCard('webhook-get').registerRunListener(async (args) => {
+      await this.sendWebhook({
+        url: args.url, method: 'GET', headers: '', body: '',
+      });
+      return true;
+    });
+    const savedCard = this.homey.flow.getActionCard('webhook-send-saved');
+    savedCard.registerArgumentAutocompleteListener('webhook', async (query) => this.getStoredWebhooks()
+      .filter((webhook) => webhook.name.toLowerCase().includes(query.toLowerCase()))
+      .map((webhook) => ({ id: webhook.id, name: webhook.name })));
+    savedCard.registerRunListener(async (args: { webhook?: { id?: unknown } }) => {
+      const selected = this.getStoredWebhooks().find((webhook) => webhook.id === args.webhook?.id);
+      if (!selected) throw new Error('The saved webhook no longer exists. Select another webhook in this Flow.');
+      await this.sendWebhook(selected);
+      return true;
+    });
   }
 
   getICalCalendars(): ICalCalendar[] {
@@ -302,6 +700,25 @@ class LocalApi extends Homey.App {
         && 'source' in event
         && (event.source === 'remote' || event.source === 'local'),
     );
+  }
+
+  getICalSyncFingerprint(event: ICalEvent): string {
+    return createHash('sha256').update(JSON.stringify([
+      event.title,
+      event.description,
+      event.location,
+      event.start,
+      event.end,
+      event.url,
+      event.status,
+    ])).digest('hex');
+  }
+
+  getICalSyncSnapshot(event: ICalEvent): ICalSyncSnapshot {
+    return {
+      id: event.id,
+      fingerprint: this.getICalSyncFingerprint(event),
+    };
   }
 
   async persistICalEvents(): Promise<void> {
@@ -411,15 +828,22 @@ class LocalApi extends Homey.App {
       return;
     }
     trigger.trigger(tokens, tokens).catch((error: unknown) => this.error(`iCal trigger "${id}" failed`, error));
+    if (['ical-event-started', 'ical-event-ended', 'ical-event-added', 'ical-event-changed'].includes(id)) {
+      const filtered = this.icalTriggers.get('ical-event-filtered');
+      if (filtered) {
+        filtered.trigger(tokens, { ...tokens, eventType: id })
+          .catch((error: unknown) => this.error('Filtered iCal trigger failed', error));
+      }
+    }
   }
 
-  parseICalEvents(calendar: ICalCalendar, parsed: ical.CalendarResponse, from: number, to: number): ICalEvent[] {
+  parseICalEvents(calendar: ICalCalendar, parsed: CalendarResponse, from: number, to: number): ICalEvent[] {
     const results: ICalEvent[] = [];
     Object.values(parsed).forEach((component) => {
       if (component.type !== 'VEVENT') {
         return;
       }
-      const event = component as ical.VEvent;
+      const event = component as VEvent;
       if (!(event.start instanceof Date) || !(event.end instanceof Date)) {
         return;
       }
@@ -477,7 +901,16 @@ class LocalApi extends Homey.App {
     if (this.icalSyncPromise) {
       return this.icalSyncPromise;
     }
-    this.icalSyncPromise = this.performICalCalendarSync().finally(() => {
+    this.icalSyncPromise = this.performICalCalendarSync().then((result) => {
+      this.lastCalendarSync = { time: new Date().toISOString(), failures: result.failures };
+      return result;
+    }, (error: unknown) => {
+      this.lastCalendarSync = {
+        time: new Date().toISOString(),
+        failures: [{ calendar: '', error: 'Calendar synchronization failed. Check the app log.' }],
+      };
+      throw error;
+    }).finally(() => {
       this.icalSyncPromise = undefined;
     });
     return this.icalSyncPromise;
@@ -492,35 +925,51 @@ class LocalApi extends Homey.App {
     }
     const from = now - 24 * 60 * 60 * 1000;
     const to = now + days * 24 * 60 * 60 * 1000;
-    const syncResults = await Promise.all(calendars.map(async (calendar) => {
-      try {
-        const parsed = await new Promise<ical.CalendarResponse>((resolve, reject) => {
-          ical.async.fromURL(calendar.url, {
-            timeout: ICAL_SYNC_TIMEOUT_MS,
-            maxContentLength: ICAL_MAX_BYTES,
-            maxBodyLength: ICAL_MAX_BYTES,
-          }, (error: unknown, data: ical.CalendarResponse) => {
-            if (error) {
-              reject(error);
-            } else {
-              resolve(data);
-            }
+    const ical: typeof import('node-ical') | undefined = calendars.length > 0
+      ? require('node-ical') as typeof import('node-ical') : undefined; // eslint-disable-line global-require
+    const syncResults: ICalCalendarSyncResult[] = new Array(calendars.length);
+    let nextCalendar = 0;
+    const worker = async (): Promise<void> => {
+      while (nextCalendar < calendars.length) {
+        const index = nextCalendar;
+        nextCalendar += 1;
+        const calendar = calendars[index];
+        try {
+          if (!ical) throw new Error('The iCal parser is unavailable.');
+          const parsed = await new Promise<CalendarResponse>((resolve, reject) => {
+            ical.async.fromURL(calendar.url, {
+              timeout: ICAL_SYNC_TIMEOUT_MS,
+              maxContentLength: ICAL_MAX_BYTES,
+              maxBodyLength: ICAL_MAX_BYTES,
+            }, (error: unknown, data: CalendarResponse) => {
+              if (error) {
+                reject(error);
+              } else {
+                resolve(data);
+              }
+            });
           });
-        });
-        if (!Object.values(parsed).some((component) => component.type === 'VCALENDAR')) {
-          throw new Error('The response is not a valid iCalendar feed.');
+          if (!Object.values(parsed).some((component) => component.type === 'VCALENDAR')) {
+            throw new Error('The response is not a valid iCalendar feed.');
+          }
+          syncResults[index] = {
+            calendar,
+            events: this.parseICalEvents(calendar, parsed, from, to),
+          };
+        } catch (error) {
+          const safeMessage = this.getICalErrorMessage(error);
+          this.fireICalTrigger('ical-sync-error', {
+            calendar: calendar.name,
+            error: safeMessage,
+          });
+          this.error(`iCal synchronization failed for calendar "${calendar.name}": ${safeMessage}`);
+          syncResults[index] = { calendar, error: safeMessage };
         }
-        return { calendar, events: this.parseICalEvents(calendar, parsed, from, to) };
-      } catch (error) {
-        const safeMessage = this.getICalErrorMessage(error);
-        this.fireICalTrigger('ical-sync-error', {
-          calendar: calendar.name,
-          error: safeMessage,
-        });
-        this.error(`iCal synchronization failed for calendar "${calendar.name}": ${safeMessage}`);
-        return { calendar, error: safeMessage };
       }
-    }));
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(ICAL_SYNC_CONCURRENCY, calendars.length) }, () => worker()),
+    );
     const oldRemote = this.icalEvents.filter((event) => event.source === 'remote');
     const localEvents = this.icalEvents.filter((event) => event.source === 'local' && event.end > now);
     const successfulResults = syncResults.filter(
@@ -551,15 +1000,7 @@ class LocalApi extends Homey.App {
           }
           return;
         }
-        if (
-          previous.title !== event.title
-          || previous.description !== event.description
-          || previous.location !== event.location
-          || previous.start !== event.start
-          || previous.end !== event.end
-          || previous.url !== event.url
-          || previous.status !== event.status
-        ) {
+        if (previous.fingerprint !== this.getICalSyncFingerprint(event)) {
           changed.push({
             calendar: event.calendar,
             title: event.title,
@@ -568,7 +1009,7 @@ class LocalApi extends Homey.App {
           this.fireICalTrigger('ical-event-changed', this.iCalEventTokens(event));
         }
       });
-      this.icalSyncSnapshots.set(calendar.name, events);
+      this.icalSyncSnapshots.set(calendar.name, events.map((event) => this.getICalSyncSnapshot(event)));
     });
     const configuredNamesForSnapshots = new Set(calendars.map((calendar) => calendar.name));
     this.icalSyncSnapshots.forEach((_events, calendarName) => {
@@ -646,59 +1087,121 @@ class LocalApi extends Homey.App {
       this.icalEvents = rawEvents as ICalEvent[];
     }
     const rawSnapshots: unknown = this.homey.settings.get(ICAL_SYNC_SNAPSHOTS_SETTING);
+    let migratedICalSnapshots = false;
     if (rawSnapshots !== undefined && rawSnapshots !== null) {
       if (typeof rawSnapshots !== 'object' || Array.isArray(rawSnapshots)) {
         throw new Error('Saved iCal synchronization snapshots are invalid.');
       }
       Object.entries(rawSnapshots).forEach(([calendar, events]) => {
-        if (
-          !Array.isArray(events)
-          || !events.every((event) => this.isValidICalEvent(event) && event.source === 'remote' && event.calendar === calendar)
-          || new Set(events.map((event) => event.id)).size !== events.length
-        ) {
+        if (!Array.isArray(events)) {
           throw new Error(`Saved iCal synchronization snapshot for "${calendar}" is invalid.`);
         }
-        this.icalSyncSnapshots.set(calendar, events);
+        const compact = events.map((event: unknown): ICalSyncSnapshot => {
+          if (
+            event
+            && typeof event === 'object'
+            && 'id' in event
+            && typeof event.id === 'string'
+            && 'fingerprint' in event
+            && typeof event.fingerprint === 'string'
+            && /^[a-f0-9]{64}$/.test(event.fingerprint)
+          ) {
+            return { id: event.id, fingerprint: event.fingerprint };
+          }
+          if (
+            this.isValidICalEvent(event)
+            && event.source === 'remote'
+            && event.calendar === calendar
+          ) {
+            migratedICalSnapshots = true;
+            return this.getICalSyncSnapshot(event);
+          }
+          throw new Error(`Saved iCal synchronization snapshot for "${calendar}" is invalid.`);
+        });
+        if (new Set(compact.map((event) => event.id)).size !== compact.length) {
+          throw new Error(`Saved iCal synchronization snapshot for "${calendar}" is invalid.`);
+        }
+        this.icalSyncSnapshots.set(calendar, compact);
       });
+      if (migratedICalSnapshots) {
+        this.homey.settings.set(ICAL_SYNC_SNAPSHOTS_SETTING, Object.fromEntries(this.icalSyncSnapshots));
+      }
     }
     await this.registerICalFlowTokens();
-    const interval = Number(this.homey.settings.get(ICAL_SYNC_INTERVAL_SETTING) || ICAL_SYNC_INTERVAL_MINUTES);
-    if (!Number.isSafeInteger(interval) || interval < 5 || interval > 1440) {
-      throw new Error('The iCal synchronization interval must be between 5 and 1,440 minutes.');
-    }
-    this.icalInterval = setInterval(() => {
-      this.syncICalCalendars().catch((error: unknown) => this.error('iCal synchronization failed', error));
-    }, interval * 60 * 1000);
+    this.configureICalAutoSync();
     this.lastICalTick = Date.now();
     this.homey.settings.on('set', (key: string) => {
       if ([ICAL_CALENDARS_SETTING, ICAL_SYNC_DAYS_SETTING].includes(key)) {
         if (this.icalConfigTimeout) {
           clearTimeout(this.icalConfigTimeout);
         }
-        this.icalConfigTimeout = setTimeout(() => {
-          this.syncICalCalendars().catch((error: unknown) => this.error('iCal settings update failed', error));
-        }, 250);
+        if (this.homey.settings.get(ICAL_AUTO_SYNC_SETTING) !== false) {
+          this.icalConfigTimeout = setTimeout(() => {
+            this.syncICalCalendars().catch((error: unknown) => this.error('iCal settings update failed', error));
+          }, 250);
+        }
       }
-      if (key === ICAL_SYNC_INTERVAL_SETTING) {
-        const nextInterval = Number(this.homey.settings.get(ICAL_SYNC_INTERVAL_SETTING));
-        if (!Number.isSafeInteger(nextInterval) || nextInterval < 5 || nextInterval > 1440) {
-          this.error('iCal synchronization interval must be between 5 and 1,440 minutes.');
-          return;
+      if (key === ICAL_SYNC_INTERVAL_SETTING || key === ICAL_AUTO_SYNC_SETTING) {
+        try {
+          this.configureICalAutoSync();
+        } catch (error) {
+          this.error('Could not configure automatic iCal synchronization', error);
         }
-        if (this.icalInterval) {
-          clearInterval(this.icalInterval);
+        if (key === ICAL_AUTO_SYNC_SETTING) {
+          if (this.icalConfigTimeout) clearTimeout(this.icalConfigTimeout);
+          if (this.homey.settings.get(ICAL_AUTO_SYNC_SETTING) === true) {
+            this.icalConfigTimeout = setTimeout(() => {
+              this.syncICalCalendars().catch((error: unknown) => this.error('iCal settings update failed', error));
+            }, 250);
+          }
         }
-        this.icalInterval = setInterval(() => {
-          this.syncICalCalendars().catch((error: unknown) => this.error('iCal synchronization failed', error));
-        }, nextInterval * 60 * 1000);
       }
     });
-    this.syncICalCalendars().catch((error: unknown) => this.error('Initial iCal synchronization failed', error));
+    if (this.homey.settings.get(ICAL_AUTO_SYNC_SETTING) !== false) {
+      this.syncICalCalendars().catch((error: unknown) => this.error('Initial iCal synchronization failed', error));
+    }
     this.icalEventTickInterval = setInterval(() => this.tickICalEvents(), COUNTDOWN_INTERVAL_MS);
+  }
+
+  configureICalAutoSync(): void {
+    const enabled: unknown = this.homey.settings.get(ICAL_AUTO_SYNC_SETTING);
+    if (enabled !== undefined && enabled !== null && typeof enabled !== 'boolean') {
+      throw new Error('The automatic iCal synchronization setting must be a boolean.');
+    }
+    const interval = Number(this.homey.settings.get(ICAL_SYNC_INTERVAL_SETTING) || ICAL_SYNC_INTERVAL_MINUTES);
+    if (!Number.isSafeInteger(interval) || interval < 5 || interval > 1440) {
+      throw new Error('The iCal synchronization interval must be between 5 and 1,440 minutes.');
+    }
+    if (this.icalInterval) clearInterval(this.icalInterval);
+    this.icalInterval = undefined;
+    if (enabled !== false) {
+      this.icalInterval = setInterval(() => {
+        this.syncICalCalendars().catch((error: unknown) => this.error('iCal synchronization failed', error));
+      }, interval * 60 * 1000);
+    }
   }
 
   async syncCalendars(): Promise<ICalSyncResult> {
     return this.syncICalCalendars();
+  }
+
+  getICalEventList(): Array<{
+    calendar: string;
+    title: string;
+    location: string;
+    start: number;
+    end: number;
+    source: string;
+  }> {
+    const now = Date.now();
+    return this.icalEvents
+      .filter((event) => event.end > now)
+      .sort((left, right) => left.start - right.start)
+      .map(({
+        calendar, title, location, start, end, source,
+      }) => ({
+        calendar, title, location, start, end, source,
+      }));
   }
 
   getUpcomingICalEvents(daysAhead: number): Array<{
@@ -750,6 +1253,15 @@ class LocalApi extends Homey.App {
       const trigger = this.homey.flow.getTriggerCard(id);
       this.icalTriggers.set(id, trigger);
       trigger.registerRunListener(() => true);
+    });
+    const filtered = this.homey.flow.getTriggerCard('ical-event-filtered');
+    this.icalTriggers.set('ical-event-filtered', filtered);
+    filtered.registerRunListener((args: ICalFlowArgs, state: ICalFlowArgs) => {
+      const title = typeof args.title === 'string' ? args.title.trim().toLowerCase() : '';
+      const calendar = typeof args.calendar === 'string' ? args.calendar.trim().toLowerCase() : '';
+      return args.eventType === state.eventType
+        && (title === '*' || (typeof state.title === 'string' && state.title.toLowerCase().includes(title)))
+        && (calendar === '*' || (typeof state.calendar === 'string' && state.calendar.toLowerCase() === calendar));
     });
     this.homey.flow.getActionCard('ical-sync-calendars').registerRunListener(async () => {
       const result = await this.syncICalCalendars();
@@ -803,6 +1315,20 @@ class LocalApi extends Homey.App {
           && (!calendar || event.calendar.toLowerCase() === calendar)
       ));
     });
+    this.homey.flow.getConditionCard('ical-event-ends-within').registerRunListener(async (args: ICalFlowArgs) => {
+      const minutes = Number(args.minutes);
+      if (!Number.isSafeInteger(minutes) || minutes < 0 || minutes > 525600) {
+        throw new Error('iCal end timeframe must be a whole number of minutes from 0 to 525,600.');
+      }
+      const title = typeof args.title === 'string' ? args.title.trim().toLowerCase() : '';
+      const calendar = typeof args.calendar === 'string' ? args.calendar.trim().toLowerCase() : '';
+      const now = Date.now();
+      return this.icalEvents.some((event) => (
+        event.end >= now && event.end <= now + minutes * 60000
+          && (!title || event.title.toLowerCase().includes(title))
+          && (!calendar || event.calendar.toLowerCase() === calendar)
+      ));
+    });
   }
 
   async saveCountdownStates(): Promise<void> {
@@ -810,13 +1336,32 @@ class LocalApi extends Homey.App {
     this.homey.settings.set(COUNTDOWN_TIMER_STATES_SETTING, timers);
   }
 
-  async resetCountdown(name: unknown): Promise<void> {
+  async resetCountdown(name: unknown, rawSeconds?: unknown): Promise<void> {
     const timer = this.getCountdownTimer(name);
-    const seconds = this.countdownTimerDurations.get(timer.name);
-    if (seconds === undefined) {
+    const configuredSeconds = this.countdownTimerDurations.get(timer.name);
+    if (rawSeconds === undefined && configuredSeconds === undefined) {
       throw new Error(`Countdown duration for timer "${timer.name}" is not configured.`);
     }
+    await this.startCountdown(timer.name, rawSeconds === undefined ? configuredSeconds : rawSeconds);
+  }
+
+  async setCountdownRemaining(name: unknown, rawSeconds: unknown): Promise<void> {
+    const timer = this.getCountdownTimer(name);
+    const seconds = this.validateCountdownSeconds(rawSeconds, 'Countdown remaining time');
+    await this.tickCountdowns();
+    if (timer.expiresAt === null || timer.paused) {
+      throw new Error(`Countdown timer "${timer.name}" is not running.`);
+    }
     await this.startCountdown(timer.name, seconds);
+  }
+
+  async startCountdownIfNotRunning(name: unknown): Promise<void> {
+    const timer = this.getCountdownTimer(name);
+    await this.tickCountdowns();
+    if (timer.expiresAt !== null && !timer.paused) {
+      return;
+    }
+    await this.resetCountdown(timer.name);
   }
 
   async resetCountdownIfRunning(name: unknown): Promise<void> {
@@ -1166,14 +1711,14 @@ class LocalApi extends Homey.App {
         const previousValue = timer.value;
         timer.value = 0;
         timer.paused = false;
-        if (previousValue !== 0) {
-          expiredTimers.push({ timer, previousValue, roundInfo: this.finishCountdownRound(timer, now) });
-        }
+        expiredTimers.push({ timer, previousValue, roundInfo: this.finishCountdownRound(timer, now) });
       }
     }
     await this.saveCountdownStates();
     expiredTimers.forEach(({ timer, previousValue, roundInfo }) => {
-      this.fireCountdownValueChanged(timer, previousValue, 0);
+      if (previousValue !== 0) {
+        this.fireCountdownValueChanged(timer, previousValue, 0);
+      }
       this.fireCountdownTrigger('countdown-reaches-zero', timer, 0, roundInfo);
     });
     this.countdownInterval = setInterval(() => {
@@ -1205,9 +1750,10 @@ class LocalApi extends Homey.App {
       if (previousValue !== nextValue) {
         timer.value = nextValue;
         changedValues.push({ timer, previousValue, nextValue });
-        if (nextValue === 0) {
-          expiredTimers.push({ timer, roundInfo: this.finishCountdownRound(timer, now) });
-        }
+      }
+      if (timer.expiresAt <= now) {
+        timer.value = 0;
+        expiredTimers.push({ timer, roundInfo: this.finishCountdownRound(timer, now) });
       }
     });
     if (expiredTimers.length > 0) {
@@ -1225,7 +1771,7 @@ class LocalApi extends Homey.App {
       this.countdownTriggers.set(id, trigger);
       this.registerCountdownTimerAutocomplete(trigger);
       trigger.registerRunListener((args: CountdownFlowArgs, state: CountdownFlowArgs) => (
-        args.timer === state.timer
+        this.getCountdownName(args.timer) === this.getCountdownName(state.timer)
         && (id !== 'countdown-reaches-value'
           || Number(args.value) === Number(state.value))
       ));
@@ -1236,10 +1782,22 @@ class LocalApi extends Homey.App {
       await this.startCountdown(args.timer, args.seconds, args.rounds);
       return true;
     });
+    const startConfiguredCard = this.homey.flow.getActionCard('countdown-start-configured');
+    this.registerCountdownTimerAutocomplete(startConfiguredCard);
+    startConfiguredCard.registerRunListener(async (args: CountdownFlowArgs) => {
+      await this.startCountdownIfNotRunning(args.timer);
+      return true;
+    });
+    const startOrResetConfiguredCard = this.homey.flow.getActionCard('countdown-start-or-reset-configured');
+    this.registerCountdownTimerAutocomplete(startOrResetConfiguredCard);
+    startOrResetConfiguredCard.registerRunListener(async (args: CountdownFlowArgs) => {
+      await this.resetCountdown(args.timer);
+      return true;
+    });
     const resetCard = this.homey.flow.getActionCard('countdown-reset');
     this.registerCountdownTimerAutocomplete(resetCard);
     resetCard.registerRunListener(async (args: CountdownFlowArgs) => {
-      await this.resetCountdown(args.timer);
+      await this.resetCountdown(args.timer, args.seconds);
       return true;
     });
     const resetIfRunningCard = this.homey.flow.getActionCard('countdown-reset-if-running');
@@ -1512,7 +2070,7 @@ class LocalApi extends Homey.App {
     try {
       this.localApiEvent.emit('responseAction', { status: 'ok' });
     } catch (e) {
-      this.error('HTTP API: error while running "Respond with 200" action', e);
+      this.error('Homey Multikit API: error while running "Respond with 200" action', e);
     }
     return true;
   };
@@ -1532,7 +2090,7 @@ class LocalApi extends Homey.App {
       if (validation.valid) {
         parsedBody = validation.data ?? {};
       } else {
-        this.error(`HTTP API: "Respond with..." action received invalid JSON: ${validation.error}. Body was: ${args.body}`);
+        this.error(`Homey Multikit API: "Respond with..." action received invalid JSON: ${validation.error}. Body was: ${args.body}`);
         parsedBody = { status: 'error', message: `Invalid JSON: ${validation.error}` };
       }
     } else if (args.body === undefined || args.body === null || args.body === '') {
@@ -1544,7 +2102,7 @@ class LocalApi extends Homey.App {
     try {
       this.localApiEvent.emit('responseAction', parsedBody);
     } catch (e) {
-      this.error('HTTP API: error while running "Respond with..." action', e);
+      this.error('Homey Multikit API: error while running "Respond with..." action', e);
     }
     return true;
   };
@@ -1563,10 +2121,13 @@ class LocalApi extends Homey.App {
    * onInit is called when the app is initialized.
    */
   async onInit() {
+    this.registerWidgetAutocompleteListeners();
     this.registerCountdownCards();
     await this.initializeCountdowns();
     this.registerICalCards();
     await this.initializeICal();
+
+    this.registerWebhookCards();
 
     this.homey.flow.getActionCard('gmail-send-email').registerRunListener(async (args: GmailEmailFlowArgs) => {
       if (typeof args.to !== 'string') {
@@ -1584,37 +2145,56 @@ class LocalApi extends Homey.App {
     // Define Actions Responses
     const responseWithAction = this.homey.flow.getActionCard('local-api-response-with');
     const responseWithOk = this.homey.flow.getActionCard('local-api-respond-with-200');
-    // Retrieve settings and initialize the HTTP API app
+    // Retrieve settings and initialize the Homey Multikit API
     const serverPort = this.homey.settings.get('serverPort') || 3000;
     this.requestReceivedArgs = await requestReceivedTrigger.getArgumentValues() || [];
-    this.localApiEvent.on('warning', (e) => this.error('HTTP API: warning', e.stack));
-    this.localApiEvent.on('uncaughtException', (e) => this.error('HTTP API: uncaughtException', e.stack));
+    this.localApiEvent.on('warning', (e) => this.error('Homey Multikit API: warning', e.stack));
+    this.localApiEvent.on('uncaughtException', (e) => this.error('Homey Multikit API: uncaughtException', e.stack));
     requestReceivedTrigger.registerRunListener(this.requestReceivedTriggerRunListener);
     responseWithAction.registerRunListener(this.responseWithActionRunListener);
     responseWithOk.registerRunListener(this.responseWithOkRunListener);
     requestReceivedTrigger.on('update', async () => {
-      this.log('HTTP API: found updated trigger, updating registered routes...');
+      this.log('Homey Multikit API: found updated trigger, updating registered routes...');
       this.requestReceivedArgs = await requestReceivedTrigger.getArgumentValues();
-      this.log(`HTTP API: routes updated, ${this.requestReceivedArgs.length} route(s) registered`);
+      this.log(`Homey Multikit API: routes updated, ${this.requestReceivedArgs.length} route(s) registered`);
     });
-    this.log(`HTTP API has been initialized with ${this.requestReceivedArgs.length} route(s) registered`);
+    this.log(`Homey Multikit API has been initialized with ${this.requestReceivedArgs.length} route(s) registered`);
 
     // Create a http server instance that can be used to listening on user defined port (or 3000, default).
     this.server = http.createServer((req, res) => this.handleRequest(requestReceivedTrigger, req, res));
     this.server.listen(serverPort, () => {
-      this.log(`HTTP API server started at port ${serverPort}`);
+      this.apiServerError = null;
+      this.log(`Homey Multikit API server started at port ${serverPort}`);
     }).on('error', (e: unknown) => {
+      this.apiServerError = 'API server failed. Check the app log.';
       // Handle server error
       if (e instanceof Error) {
         if (e.message.includes('EADDRINUSE') || e.message.includes('EACCES')) {
-          this.error(`HTTP API server error: port ${serverPort} already in use`);
+          this.error(`Homey Multikit API server error: port ${serverPort} already in use`);
         } else {
-          this.error(`HTTP API server error: ${e.message}`);
+          this.error(`Homey Multikit API server error: ${e.message}`);
         }
+
       } else {
-        this.error('HTTP API server error: unknown error');
+        this.error('Homey Multikit API server error: unknown error');
       }
     });
+  }
+
+  getStatus(): object {
+    return {
+      api: { listening: Boolean(this.server?.listening), error: this.apiServerError },
+      calendars: {
+        configured: this.getICalCalendars().length,
+        lastSync: this.lastCalendarSync,
+        syncing: Boolean(this.icalSyncPromise),
+      },
+      email: {
+        configured: Boolean(this.homey.settings.get('gmailAddress') && this.homey.settings.get('gmailAppPassword')),
+        lastResult: this.lastEmailResult,
+      },
+      webhook: { configured: this.getStoredWebhooks().length, lastResult: this.lastWebhookResult },
+    };
   }
 
   /**
@@ -1624,10 +2204,23 @@ class LocalApi extends Homey.App {
    * @param res The node http response object
    */
   async handleRequest(requestReceivedTrigger: Homey.FlowCardTrigger, req: IncomingMessage, res: ServerResponse) {
+    try {
+      if (await this.browserSettings.handle(req, res)) {
+        return;
+      }
+    } catch (error) {
+      this.error('Browser settings request failed', error);
+      if (!res.headersSent) {
+        this.sendJson(res, 500, { status: 'error', message: 'Browser settings request failed' }, req.method || 'GET');
+      } else {
+        res.destroy();
+      }
+      return;
+    }
     this.requestCounter += 1;
     const reqId = this.requestCounter;
     const method = (req.method || 'GET').toUpperCase();
-    this.log(`HTTP API [#${reqId}]: incoming ${method} ${this.getRequestRoute(req)}`);
+    this.log(`Homey Multikit API [#${reqId}]: incoming ${method} ${this.getRequestRoute(req)}`);
 
     const corsAcao = this.retrieveCorsConfig();
     res.setHeader('Content-Type', 'application/json');
@@ -1638,7 +2231,7 @@ class LocalApi extends Homey.App {
 
     try {
       if (!ALLOWED_METHODS.includes(method)) {
-        this.log(`HTTP API [#${reqId}]: method ${method} is not supported`);
+        this.log(`Homey Multikit API [#${reqId}]: method ${method} is not supported`);
         this.sendJson(res, 405, { status: 'error', message: `Method ${method} not allowed` }, method);
         return;
       }
@@ -1647,20 +2240,20 @@ class LocalApi extends Homey.App {
         const allowedMethods = this.getAllowedMethods(req);
         res.setHeader('Allow', allowedMethods.join(', '));
         res.setHeader('Access-Control-Allow-Methods', allowedMethods.join(', '));
-        this.log(`HTTP API [#${reqId}]: answering OPTIONS request for ${req.url}`);
+        this.log(`Homey Multikit API [#${reqId}]: answering OPTIONS request for ${req.url}`);
         res.writeHead(204);
         res.end();
         return;
       }
 
       if (!this.hasValidApiToken(req)) {
-        this.log(`HTTP API [#${reqId}]: rejected unauthorized ${method} request`);
+        this.log(`Homey Multikit API [#${reqId}]: rejected unauthorized ${method} request`);
         this.sendJson(res, 401, { status: 'unauthorized', message: 'Missing or invalid API token' }, method);
         return;
       }
 
       if (!this.isRouteAndMethodAuthorized(req)) {
-        this.log(`HTTP API [#${reqId}]: no flow registered for ${method} ${req.url}, responding 404`);
+        this.log(`Homey Multikit API [#${reqId}]: no flow registered for ${method} ${req.url}, responding 404`);
         this.sendJson(res, 404, { status: 'not-found' }, method);
         return;
       }
@@ -1672,7 +2265,7 @@ class LocalApi extends Homey.App {
           rawBody = await this.readRequestBody(req);
         } catch (e) {
           if (e instanceof Error && e.message === 'PAYLOAD_TOO_LARGE') {
-            this.error(`HTTP API [#${reqId}]: request body exceeded the ${MAX_BODY_BYTES} bytes limit`);
+            this.error(`Homey Multikit API [#${reqId}]: request body exceeded the ${MAX_BODY_BYTES} bytes limit`);
             this.sendJson(res, 413, { status: 'error', message: 'Request body too large' }, method);
             return;
           }
@@ -1681,13 +2274,13 @@ class LocalApi extends Homey.App {
 
         const validation = this.validateJsonBody(rawBody);
         if (!validation.valid) {
-          this.error(`HTTP API [#${reqId}]: invalid JSON body received: ${validation.error}`);
+          this.error(`Homey Multikit API [#${reqId}]: invalid JSON body received: ${validation.error}`);
           this.sendJson(res, 400, { status: 'error', message: `Invalid JSON body: ${validation.error}` }, method);
           return;
         }
       }
 
-      this.log(`HTTP API [#${reqId}]: triggering flow(s) for ${method} ${this.getRequestRoute(req)}`);
+      this.log(`Homey Multikit API [#${reqId}]: triggering flow(s) for ${method} ${this.getRequestRoute(req)}`);
       requestReceivedTrigger.trigger(
         { url: this.getRequestUrlWithoutToken(req), method, body: rawBody },
         { request: req, response: res },
@@ -1702,22 +2295,22 @@ class LocalApi extends Homey.App {
           return;
         }
 
-        this.log(`HTTP API [#${reqId}]: returning field ${requestedField}`);
+        this.log(`Homey Multikit API [#${reqId}]: returning field ${requestedField}`);
         this.sendJson(res, 200, {
           status: 'success', url: this.getRequestUrlWithoutToken(req), method: req.method, data: fieldValue,
         }, method);
         return;
       }
-      this.log(`HTTP API [#${reqId}]: flow responded, sending 200`);
+      this.log(`Homey Multikit API [#${reqId}]: flow responded, sending 200`);
       this.sendJson(res, 200, {
         status: 'success', url: this.getRequestUrlWithoutToken(req), method: req.method, data: responseData,
       }, method);
     } catch (e) {
       if (e instanceof Error && e.message === 'RESPONSE_TIMEOUT') {
-        this.error(`HTTP API [#${reqId}]: no response received from any flow within ${RESPONSE_TIMEOUT_MS}ms`);
+        this.error(`Homey Multikit API [#${reqId}]: no response received from any flow within ${RESPONSE_TIMEOUT_MS}ms`);
         this.sendJson(res, 504, { status: 'error', message: 'Flow did not respond in time' }, method);
       } else {
-        this.error(`HTTP API [#${reqId}]: unexpected error while handling request`, e);
+        this.error(`Homey Multikit API [#${reqId}]: unexpected error while handling request`, e);
         this.sendJson(res, 500, { status: 'error', message: 'Internal server error' }, method);
       }
     } finally {
@@ -1773,7 +2366,7 @@ class LocalApi extends Homey.App {
       clearTimeout(this.icalConfigTimeout);
     }
     if (this.server) {
-      this.log('HTTP API: closing HTTP server');
+      this.log('Homey Multikit API: closing HTTP server');
       await new Promise<void>((resolve) => {
         this.server?.close(() => resolve());
       });

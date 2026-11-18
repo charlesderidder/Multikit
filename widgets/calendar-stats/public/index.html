@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calendar statistics</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { margin: 0; padding: 12px; }
+    header { display: flex; align-items: center; gap: 10px; }
+    img { width: 42px; height: 42px; object-fit: cover; border-radius: 12px; }
+    h1 { margin: 0; font-size: 1rem; }
+    #refresh { margin-left: auto; padding: 7px 10px; border: 0; border-radius: 8px; cursor: pointer; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px 0; }
+    .stat { padding: 10px; border-radius: 9px; background: #0052cc14; text-align: center; }
+    .stat strong { display: block; font-size: 1.45rem; }
+    .stat span, #next, #status { font-size: .78rem; color: #777; }
+    #event { font-weight: 650; }
+    #status { min-height: 18px; margin-top: 8px; }
+  </style>
+  <script src="/homey.js" data-origin="widget"></script>
+</head>
+<body>
+  <header><img src="./art.png" alt=""><h1 id="title"></h1><button id="refresh" type="button" aria-label="Refresh">↻</button></header>
+  <div class="stats">
+    <div class="stat"><strong id="today">--</strong><span id="today-label"></span></div>
+    <div class="stat"><strong id="tomorrow">--</strong><span id="tomorrow-label"></span></div>
+    <div class="stat"><strong id="upcoming">--</strong><span id="upcoming-label"></span></div>
+  </div>
+  <div id="event"></div>
+  <div id="next"></div>
+  <p id="status" role="status" aria-live="polite"></p>
+  <script>
+    function onHomeyReady(Homey) {
+      const text = (key) => Homey.__(`settings.widgets.calendarStats.${key}`);
+      const refresh = document.getElementById('refresh');
+      const status = document.getElementById('status');
+      document.getElementById('title').textContent = text('title');
+      document.getElementById('today-label').textContent = text('today');
+      document.getElementById('tomorrow-label').textContent = text('tomorrow');
+      document.getElementById('upcoming-label').textContent = text('upcoming');
+      const render = (result) => {
+        document.getElementById('today').textContent = result.today;
+        document.getElementById('tomorrow').textContent = result.tomorrow;
+        document.getElementById('upcoming').textContent = result.upcoming;
+        document.getElementById('event').textContent = result.nextEvent ? result.nextEvent.title : text('empty');
+        document.getElementById('next').textContent = result.nextEvent
+          ? `${new Date(result.nextEvent.start).toLocaleString()} · ${result.nextEvent.calendar}${result.nextEvent.location ? ` · ${result.nextEvent.location}` : ''}`
+          : '';
+        status.textContent = result.lastSync
+          ? `${text('lastSync')} ${new Date(result.lastSync.time).toLocaleTimeString()}`
+          : text('notSynced');
+      };
+      const load = async (sync = false) => {
+        refresh.disabled = true;
+        try {
+          render(sync
+            ? await Homey.api('POST', '/sync', {})
+            : await Homey.api('GET', '/stats', {}));
+        } catch (error) {
+          status.textContent = `${text('failed')} ${error.message || error}`;
+        } finally {
+          refresh.disabled = false;
+        }
+      };
+      refresh.addEventListener('click', () => load(true));
+      load();
+      setInterval(load, 5 * 60 * 1000);
+      Homey.ready();
+    }
+  </script>
+</body>
+</html>

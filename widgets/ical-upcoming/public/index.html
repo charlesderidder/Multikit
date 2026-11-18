@@ -80,12 +80,8 @@
       };
       document.getElementById('heading').textContent = labels.heading;
 
-      const renderEvents = (error, events) => {
+      const renderEvents = (events) => {
         list.replaceChildren();
-        if (error) {
-          status.textContent = `${labels.failed} ${error.message || error}`;
-          return;
-        }
         if (!Array.isArray(events) || events.length === 0) {
           status.textContent = labels.empty;
           return;
@@ -116,22 +112,37 @@
         });
       };
 
-      const loadEvents = () => {
-        status.textContent = labels.loading;
-        const daysAhead = Number(settings.daysAhead || 3);
-        Homey.api('GET', `/events?daysAhead=${encodeURIComponent(daysAhead)}`, {}, renderEvents);
+      const renderError = (error) => {
+        list.replaceChildren();
+        status.textContent = `${labels.failed} ${error && error.message ? error.message : error}`;
       };
 
-      refresh.addEventListener('click', () => {
+      const loadEvents = async () => {
+        status.textContent = labels.loading;
+        const daysAhead = Number(settings.daysAhead || 3);
+        try {
+          const events = await Homey.api(
+            'GET',
+            `/events?daysAhead=${encodeURIComponent(daysAhead)}`,
+            {},
+          );
+          renderEvents(events);
+        } catch (error) {
+          renderError(error);
+        }
+      };
+
+      refresh.addEventListener('click', async () => {
+        if (refresh.disabled) return;
         refresh.disabled = true;
-        Homey.api('POST', '/sync', {}, (error) => {
+        try {
+          await Homey.api('POST', '/sync', {});
+          await loadEvents();
+        } catch (error) {
+          renderError(error);
+        } finally {
           refresh.disabled = false;
-          if (error) {
-            renderEvents(error);
-            return;
-          }
-          loadEvents();
-        });
+        }
       });
 
       loadEvents();
