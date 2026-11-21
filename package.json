@@ -1,6 +1,6 @@
 {
-  "name": "dev.charlesderidder.homeyhttpapi",
-  "version": "1.8.1",
+  "name": "dev.charlesderidder.multikit",
+  "version": "1.0.0",
   "main": "app.ts",
   "license": "MIT",
   "scripts": {

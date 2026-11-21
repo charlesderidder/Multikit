@@ -1,6 +1,6 @@
 {
-  "id": "dev.charlesderidder.homeyhttpapi",
-  "version": "1.8.2",
+  "id": "dev.charlesderidder.multikit",
+  "version": "1.0.0",
   "compatibility": ">=12.3.0",
   "sdk": 3,
   "platforms": [

@@ -27,6 +27,8 @@ Dashboard widget selections are stored by Homey. Removed timers, saved webhooks,
 
 ## Settings and app updates
 
+The app ID changed from `dev.charlesderidder.homeyhttpapi` to `dev.charlesderidder.multikit`. Homey treats this as a separate app, not an update to the old one: settings, virtual devices, widgets and Flows must be recreated or reconfigured. Keep the old app installed while recording its configuration, and do not uninstall it until the new setup has been verified. Both apps use port 3000 by default; stop the old app or configure different ports before running them at the same time.
+
 The app keeps its configuration in Homey's persistent app settings, separate from the installed app files. Updating the app in place preserves saved API settings and tokens, Gmail credentials, calendar URLs, timer configuration, and active timer state. Do not uninstall the app as part of an update; uninstalling may remove its stored settings. The Gmail app password is never displayed in the settings page: leaving its field blank keeps the saved password, and it is removed only when you explicitly select **Clear the saved app password**.
 
 ### Browser settings
