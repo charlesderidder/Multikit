@@ -1,4 +1,9 @@
 {
+  "1.0.2": {
+    "en": "Added query-parameter support to the Local API request trigger. Query parameters are now available to flows as a JSON tag; authentication tokens are omitted.",
+    "nl": "Queryparameters van inkomende Local API-verzoeken zijn nu beschikbaar als JSON-flowtag; authenticatietokens worden niet meegestuurd.",
+    "de": "Query-Parameter eingehender Local-API-Anfragen sind jetzt als JSON-Flow-Tag verfügbar; Authentifizierungstoken werden nicht mitgesendet."
+  },
   "1.0.0": {
     "en": "First release of Multikit: local API, webhooks, countdown timers, virtual devices and modes, Gmail email, iCal calendars and dashboard widgets.",
     "nl": "Eerste uitgave van Multikit: lokale API, webhooks, afteltimers, virtuele apparaten en modi, Gmail-e-mail, iCal-agenda's en dashboardwidgets.",

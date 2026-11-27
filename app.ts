@@ -1936,6 +1936,29 @@ class LocalApi extends Homey.App {
     return `${requestUrl.pathname}${requestUrl.search}`;
   }
 
+  getRequestQuery(req: IncomingMessage): string {
+    const query = Object.create(null) as Record<string, string | string[]>;
+    const requestUrl = new URL(req.url || '/', 'http://localhost');
+    const { searchParams } = requestUrl;
+
+    searchParams.forEach((value, key) => {
+      if (key === 'token') {
+        return;
+      }
+
+      const currentValue = query[key];
+      if (currentValue === undefined) {
+        query[key] = value;
+      } else if (typeof currentValue === 'string') {
+        query[key] = [currentValue, value];
+      } else {
+        currentValue.push(value);
+      }
+    });
+
+    return JSON.stringify(query);
+  }
+
   getRequestedField(req: IncomingMessage): string | undefined {
     const requestUrl = new URL(req.url || '/', 'http://localhost');
     return requestUrl.searchParams.get('field') || requestUrl.searchParams.get('veld') || undefined;
@@ -2282,7 +2305,12 @@ class LocalApi extends Homey.App {
 
       this.log(`Homey Multikit API [#${reqId}]: triggering flow(s) for ${method} ${this.getRequestRoute(req)}`);
       requestReceivedTrigger.trigger(
-        { url: this.getRequestUrlWithoutToken(req), method, body: rawBody },
+        {
+          url: this.getRequestUrlWithoutToken(req),
+          method,
+          body: rawBody,
+          query: this.getRequestQuery(req),
+        },
         { request: req, response: res },
       );
 

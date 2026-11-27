@@ -46,6 +46,61 @@ test('outgoing webhooks send method, headers and body and reject failures', asyn
   await assert.rejects(sendWebhook({ ...args, body: 'x'.repeat(1024 * 1024 + 1) }), /1 MB/);
 });
 
+test('local API exposes query parameters to flows without exposing the auth token', async () => {
+  const originalLoad = Module._load;
+  Module._load = function load(request, parent, isMain) {
+    if (request === 'homey') return { App: class App {} };
+    return originalLoad.call(this, request, parent, isMain);
+  };
+  let App;
+  try {
+    delete require.cache[require.resolve(path.join(process.cwd(), '.homeybuild', 'app.js'))];
+    App = require(path.join(process.cwd(), '.homeybuild', 'app.js')); // eslint-disable-line global-require, import/no-dynamic-require
+  } finally {
+    Module._load = originalLoad;
+  }
+
+  const app = new App();
+  app.browserSettings = { handle: async () => false };
+  app.requestCounter = 0;
+  app.log = () => {};
+  app.error = (...args) => {
+    throw new Error(String(args));
+  };
+  app.retrieveCorsConfig = () => '*';
+  app.hasValidApiToken = () => true;
+  app.isRouteAndMethodAuthorized = () => true;
+  app.waitForFlowResponse = async () => ({ status: 'ok' });
+  app.localApiEvent = { removeAllListeners: () => {} };
+
+  let flowTokens;
+  const trigger = {
+    trigger(tokens) {
+      flowTokens = tokens;
+    },
+  };
+  const response = {
+    writableEnded: false,
+    setHeader() {},
+    writeHead(statusCode) {
+      this.statusCode = statusCode;
+    },
+    end(body) {
+      this.body = body;
+      this.writableEnded = true;
+    },
+  };
+
+  await app.handleRequest(trigger, {
+    method: 'GET',
+    url: '/status?room=kitchen&label=first&token=secret&label=second&empty=',
+  }, response);
+
+  assert.equal(flowTokens.query, '{"room":"kitchen","label":["first","second"],"empty":""}');
+  assert.equal(flowTokens.url, '/status?room=kitchen&label=first&label=second&empty=');
+  assert.equal(response.statusCode, 200);
+});
+
 test('webhook deadline applies even while the response is streaming', { timeout: 20000 }, async (t) => {
   const server = http.createServer((_req, res) => {
     res.writeHead(200);

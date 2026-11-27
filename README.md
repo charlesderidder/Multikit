@@ -43,6 +43,8 @@ The trigger card supports `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`, and `
 
 Request bodies for `POST`, `PUT`, and `PATCH` must contain valid JSON. `HEAD` responses contain the same headers as a normal response but no response body. `OPTIONS` requests include the supported methods in the `Allow` header.
 
+The **A Multikit API request is received** trigger provides query parameters in its **Query parameters** tag as JSON text. For example, a request to `/status?room=kitchen&label=first&label=second` provides `{"room":"kitchen","label":["first","second"]}`. Parameter values are strings; repeated parameter names are represented as arrays. The authentication `token` parameter is omitted from this tag.
+
 ### Select one response value
 
 Add `field` (or the Dutch alias `veld`) to a `GET` request to return one property from the JSON returned by a flow. The app looks for the property both at the top level and inside a `data` object. For example, when `/alles` returns a `Zonsopkomst` property, request:

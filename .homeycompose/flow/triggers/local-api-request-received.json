@@ -109,6 +109,15 @@
         "de": "Inhalt",
         "nl": "Inhoud"
       }
+    },
+    {
+      "name": "query",
+      "type": "string",
+      "title": {
+        "en": "Query parameters",
+        "de": "Query-Parameter",
+        "nl": "Queryparameters"
+      }
     }
   ]
 }
